@@ -19,8 +19,22 @@ import copy
 import re
 from typing import Dict, Any, List, Tuple, Optional
 
-# Version
-__version__ = "0.6.0"
+# Version and metadata
+__version__ = "0.7.0"
+__author__ = "Laboratoire Sonore"
+__description__ = "ComfyUI Performance Lab - Iterative workflow optimization with AI assistance"
+
+# ComfyUI Manager integration - explicit exports
+# WEB_DIRECTORY is None because we don't have custom web assets
+WEB_DIRECTORY = None
+
+# __all__ defines what's exported when using "from package import *"
+__all__ = [
+    "__version__",
+    "NODE_CLASS_MAPPINGS",
+    "NODE_DISPLAY_NAME_MAPPINGS",
+    "WEB_DIRECTORY",
+]
 
 # Ensure the module directory is in path for imports
 MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -91,11 +105,11 @@ TIPS:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "trigger": ("*",),  # Any input triggers report
+                "trigger": ("*", {"tooltip": "Connect ANY output here to trigger the report"}),
             },
             "optional": {
-                "timer": ("PERF_TIMER",),
-                "label": ("STRING", {"default": "Generation"}),
+                "timer": ("PERF_TIMER", {"tooltip": "Connect from ⏱️ Start Timer for accurate timing"}),
+                "label": ("STRING", {"default": "Generation", "tooltip": "Name for this measurement"}),
             }
         }
 
@@ -166,8 +180,8 @@ TIPS:
         return {
             "required": {},
             "optional": {
-                "passthrough": ("*",),
-                "checkpoint_name": ("STRING", {"default": ""}),
+                "passthrough": ("*", {"tooltip": "Connect any data - it passes through unchanged"}),
+                "checkpoint_name": ("STRING", {"default": "", "tooltip": "Label for this measurement point"}),
             }
         }
 
@@ -225,13 +239,16 @@ WHY USE THIS:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "width": ("INT", {"default": 1024, "min": 64, "max": 8192}),
-                "height": ("INT", {"default": 1024, "min": 64, "max": 8192}),
+                "width": ("INT", {"default": 1024, "min": 64, "max": 8192,
+                         "tooltip": "Original width - connect from your workflow or type a value"}),
+                "height": ("INT", {"default": 1024, "min": 64, "max": 8192,
+                          "tooltip": "Original height - connect from your workflow or type a value"}),
                 "max_size": ("INT", {"default": 768, "min": 256, "max": 2048,
-                            "tooltip": "Maximum dimension (width or height)"}),
+                            "tooltip": "Maximum dimension - 768 for testing, 1024+ for finals"}),
             },
             "optional": {
-                "enabled": ("BOOLEAN", {"default": True}),
+                "enabled": ("BOOLEAN", {"default": True,
+                           "tooltip": "ON = cap resolution, OFF = pass through original"}),
             }
         }
 
@@ -280,12 +297,14 @@ WHY USE THIS:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "steps": ("INT", {"default": 30, "min": 1, "max": 200}),
+                "steps": ("INT", {"default": 30, "min": 1, "max": 200,
+                         "tooltip": "Your original step count - connect from workflow or enter value"}),
                 "max_steps": ("INT", {"default": 20, "min": 1, "max": 100,
-                             "tooltip": "Cap steps to this value during testing"}),
+                             "tooltip": "Maximum steps during testing - 15-20 is usually enough"}),
             },
             "optional": {
-                "enabled": ("BOOLEAN", {"default": True}),
+                "enabled": ("BOOLEAN", {"default": True,
+                           "tooltip": "ON = limit steps, OFF = use original value"}),
             }
         }
 
@@ -328,11 +347,12 @@ WHY USE THIS:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "batch_size": ("INT", {"default": 4, "min": 1, "max": 64}),
+                "batch_size": ("INT", {"default": 4, "min": 1, "max": 64,
+                              "tooltip": "Your original batch size - each image uses more VRAM"}),
             },
             "optional": {
                 "force_single": ("BOOLEAN", {"default": True,
-                                "tooltip": "Force batch size to 1"}),
+                                "tooltip": "ON = force batch=1 (saves VRAM), OFF = keep original"}),
             }
         }
 
@@ -384,11 +404,14 @@ WHY USE THIS:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 30.0, "step": 0.5}),
-                "model_type": (list(cls.MODEL_CFG.keys()),),
+                "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 30.0, "step": 0.5,
+                       "tooltip": "Your CFG value - will be adjusted based on model type"}),
+                "model_type": (list(cls.MODEL_CFG.keys()),
+                              {"tooltip": "Select your model - Flux needs low CFG, SD needs higher"}),
             },
             "optional": {
-                "auto_adjust": ("BOOLEAN", {"default": True}),
+                "auto_adjust": ("BOOLEAN", {"default": True,
+                               "tooltip": "ON = use optimal CFG for model, OFF = use your value"}),
             }
         }
 
@@ -435,15 +458,22 @@ USE WHEN:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "width": ("INT", {"default": 1024, "min": 64, "max": 8192}),
-                "height": ("INT", {"default": 1024, "min": 64, "max": 8192}),
-                "steps": ("INT", {"default": 30, "min": 1, "max": 200}),
-                "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 30.0}),
+                "width": ("INT", {"default": 1024, "min": 64, "max": 8192,
+                         "tooltip": "Original width from your workflow"}),
+                "height": ("INT", {"default": 1024, "min": 64, "max": 8192,
+                          "tooltip": "Original height from your workflow"}),
+                "steps": ("INT", {"default": 30, "min": 1, "max": 200,
+                         "tooltip": "Original steps from your workflow"}),
+                "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 30.0,
+                       "tooltip": "CFG passes through unchanged"}),
             },
             "optional": {
-                "enabled": ("BOOLEAN", {"default": True}),
-                "target_resolution": ("INT", {"default": 512, "min": 256, "max": 1024}),
-                "target_steps": ("INT", {"default": 15, "min": 4, "max": 50}),
+                "enabled": ("BOOLEAN", {"default": True,
+                           "tooltip": "ON = fast testing mode, OFF = original values"}),
+                "target_resolution": ("INT", {"default": 512, "min": 256, "max": 1024,
+                                     "tooltip": "Max resolution during speed test"}),
+                "target_steps": ("INT", {"default": 15, "min": 4, "max": 50,
+                                "tooltip": "Max steps during speed test"}),
             }
         }
 
@@ -498,14 +528,20 @@ USE WHEN:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "width": ("INT", {"default": 1024, "min": 64, "max": 8192}),
-                "height": ("INT", {"default": 1024, "min": 64, "max": 8192}),
-                "steps": ("INT", {"default": 30, "min": 1, "max": 200}),
-                "batch_size": ("INT", {"default": 4, "min": 1, "max": 64}),
+                "width": ("INT", {"default": 1024, "min": 64, "max": 8192,
+                         "tooltip": "Original width from your workflow"}),
+                "height": ("INT", {"default": 1024, "min": 64, "max": 8192,
+                          "tooltip": "Original height from your workflow"}),
+                "steps": ("INT", {"default": 30, "min": 1, "max": 200,
+                         "tooltip": "Original steps from your workflow"}),
+                "batch_size": ("INT", {"default": 4, "min": 1, "max": 64,
+                              "tooltip": "Original batch size from your workflow"}),
             },
             "optional": {
-                "enabled": ("BOOLEAN", {"default": True}),
-                "vram_target": (["6GB", "8GB", "12GB"],),
+                "enabled": ("BOOLEAN", {"default": True,
+                           "tooltip": "ON = apply VRAM limits, OFF = use original values"}),
+                "vram_target": (["6GB", "8GB", "12GB"],
+                               {"tooltip": "Select your GPU's VRAM capacity"}),
             }
         }
 
@@ -1574,10 +1610,431 @@ Raw times: {', '.join(f'{d:.2f}s' for d in all_durations)}"""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# USER-FRIENDLY HELPER NODES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class PerfLab_OneClickOptimize:
+    """One-Click Optimize - Everything in one simple node!"""
+
+    DESCRIPTION = """⚡ ONE-CLICK OPTIMIZE
+
+THE EASIEST WAY TO OPTIMIZE!
+
+Just connect your values and toggle Test Mode:
+• Test Mode ON = Fast testing (low res, few steps)
+• Test Mode OFF = Full quality production
+
+INPUTS (connect from your workflow):
+• width/height: Your resolution
+• steps: Your step count
+• cfg: Your CFG value
+• batch_size: Your batch size
+
+OUTPUTS (connect to your workflow):
+• All values optimized based on mode
+
+ONE TOGGLE CONTROLS EVERYTHING!
+No need to understand each optimization."""
+
+    CATEGORY = "⚡ Performance Lab/⭐ Start Here"
+    FUNCTION = "optimize"
+    RETURN_TYPES = ("INT", "INT", "INT", "FLOAT", "INT", "STRING")
+    RETURN_NAMES = ("width", "height", "steps", "cfg", "batch_size", "status")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "test_mode": ("BOOLEAN", {"default": True,
+                             "tooltip": "ON = fast testing, OFF = full quality"}),
+            },
+            "optional": {
+                "width": ("INT", {"default": 1024, "min": 64, "max": 8192,
+                         "tooltip": "Connect from Empty Latent or enter value"}),
+                "height": ("INT", {"default": 1024, "min": 64, "max": 8192,
+                          "tooltip": "Connect from Empty Latent or enter value"}),
+                "steps": ("INT", {"default": 30, "min": 1, "max": 200,
+                         "tooltip": "Connect from KSampler or enter value"}),
+                "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 30.0,
+                       "tooltip": "Connect from KSampler or enter value"}),
+                "batch_size": ("INT", {"default": 1, "min": 1, "max": 64,
+                              "tooltip": "Connect from Empty Latent or enter value"}),
+                "test_resolution": ("INT", {"default": 512, "min": 256, "max": 1024,
+                                   "tooltip": "Max resolution in test mode"}),
+                "test_steps": ("INT", {"default": 15, "min": 4, "max": 50,
+                              "tooltip": "Max steps in test mode"}),
+            }
+        }
+
+    def optimize(self, test_mode, width=1024, height=1024, steps=30, cfg=7.0,
+                 batch_size=1, test_resolution=512, test_steps=15):
+        if test_mode:
+            # Apply test optimizations
+            if width > test_resolution or height > test_resolution:
+                scale = test_resolution / max(width, height)
+                width = int(width * scale) // 8 * 8
+                height = int(height * scale) // 8 * 8
+            steps = min(steps, test_steps)
+            batch_size = 1
+            status = f"🧪 TEST MODE: {width}x{height}, {steps} steps, batch=1"
+        else:
+            status = f"🎬 PRODUCTION: {width}x{height}, {steps} steps, batch={batch_size}"
+
+        print(f"[Performance Lab] {status}")
+        return (width, height, steps, cfg, batch_size, status)
+
+
+class PerfLab_QuickStart:
+    """Quick Start Guide - Learn how to use Performance Lab."""
+
+    DESCRIPTION = """📚 QUICK START GUIDE
+
+ADD THIS NODE TO SEE INSTRUCTIONS!
+
+This node outputs helpful documentation
+about how to use Performance Lab.
+
+Select a topic to learn about:
+• Getting Started - First steps
+• Speed Optimization - Make it faster
+• VRAM Optimization - Fix out of memory
+• Quality Optimization - Better images
+• Troubleshooting - Fix common issues"""
+
+    CATEGORY = "⚡ Performance Lab/⭐ Start Here"
+    FUNCTION = "guide"
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("guide",)
+    OUTPUT_NODE = True
+
+    GUIDES = {
+        "Getting Started": """═══ GETTING STARTED ═══
+
+Welcome to Performance Lab! Here's how to begin:
+
+1️⃣ ADD TIMING
+   • Add ⏱️ Start Timer at the START
+   • Add 📊 Performance Report at the END
+   • Connect timer output to report
+
+2️⃣ RUN YOUR WORKFLOW
+   • Queue your workflow normally
+   • Check console for timing results
+
+3️⃣ OPTIMIZE
+   • Add ⚡ One-Click Optimize
+   • Toggle Test Mode ON for fast testing
+   • Toggle OFF when you want full quality
+
+That's it! You're optimizing! 🎉""",
+
+        "Speed Optimization": """═══ SPEED OPTIMIZATION ═══
+
+Make your workflow run FASTER:
+
+🚀 QUICK WINS:
+• Lower resolution (768 instead of 1024)
+• Fewer steps (15-20 for testing)
+• Batch size 1
+
+📐 USE THESE NODES:
+• 📐 Cap Resolution - Limit dimensions
+• 🔢 Reduce Steps - Limit step count
+• 🚀 Speed Test Preset - All at once
+
+💡 TIPS:
+• Resolution affects speed quadratically
+  (2x resolution = 4x slower)
+• Steps affect speed linearly
+  (2x steps = 2x slower)
+• Test at 512px, render at 1024px""",
+
+        "VRAM Optimization": """═══ VRAM OPTIMIZATION ═══
+
+Fix "CUDA out of memory" errors:
+
+💾 USE THESE NODES:
+• 💾 Low VRAM Preset - Select your GPU size
+• 📦 Reduce Batch - Force batch=1
+• 📐 Cap Resolution - Lower resolution
+
+🎯 RECOMMENDED SETTINGS BY GPU:
+• 6GB:  512px max, 20 steps, batch=1
+• 8GB:  768px max, 25 steps, batch=1
+• 12GB: 1024px max, 30 steps, batch=1
+
+💡 TIPS:
+• SDXL uses 2x VRAM of SD 1.5
+• Batch=4 uses 4x VRAM of batch=1
+• Upscalers add 2-4GB VRAM""",
+
+        "Quality Optimization": """═══ QUALITY OPTIMIZATION ═══
+
+Get better image quality:
+
+🎨 KEY SETTINGS:
+• Use correct CFG for your model
+• Use enough steps (25-30 for quality)
+• Use native resolution
+
+🎯 OPTIMAL CFG BY MODEL:
+• SD 1.5: 7.5
+• SDXL: 7.0
+• SD3: 4.5
+• Flux Dev: 3.5
+• Flux Schnell: 1.0
+
+📐 OPTIMAL RESOLUTION:
+• SD 1.5: 512x512
+• SDXL/Flux: 1024x1024
+
+💡 TIPS:
+• Higher steps = more detail (diminishing returns after 30)
+• Wrong CFG = black or burned images""",
+
+        "Troubleshooting": """═══ TROUBLESHOOTING ═══
+
+Common issues and fixes:
+
+🖤 BLACK IMAGES?
+• Flux with CFG > 4? Lower to 1-3.5
+• Too few steps? Use at least 15-20
+• Use 🔧 Black Image Fix node
+
+💥 OUT OF MEMORY?
+• Lower resolution
+• Reduce batch to 1
+• Use 💾 Low VRAM Preset
+
+🐌 TOO SLOW?
+• Lower resolution during testing
+• Use fewer steps (15-20)
+• Use 🚀 Speed Test Preset
+
+❓ NODES NOT SHOWING?
+• Restart ComfyUI
+• Check console for errors
+• Reinstall from Manager""",
+    }
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "topic": (list(cls.GUIDES.keys()),
+                         {"tooltip": "Select a topic to learn about"}),
+            }
+        }
+
+    def guide(self, topic):
+        guide_text = self.GUIDES.get(topic, "Topic not found")
+        print(f"\n[Performance Lab]\n{guide_text}\n")
+        return (guide_text,)
+
+
+class PerfLab_AutoDetectGPU:
+    """Auto Detect GPU - Automatically detect your GPU and VRAM."""
+
+    DESCRIPTION = """🔍 AUTO DETECT GPU
+
+Automatically detects your GPU and suggests settings!
+
+NO INPUTS NEEDED - just add this node and run.
+
+OUTPUTS:
+• gpu_name: Your GPU model
+• vram_gb: Total VRAM in GB
+• suggested_preset: Recommended VRAM preset
+• info: Full GPU information
+
+USE THIS:
+Connect 'suggested_preset' to Low VRAM Preset
+to automatically use the right settings!"""
+
+    CATEGORY = "⚡ Performance Lab/⭐ Start Here"
+    FUNCTION = "detect"
+    RETURN_TYPES = ("STRING", "FLOAT", "STRING", "STRING")
+    RETURN_NAMES = ("gpu_name", "vram_gb", "suggested_preset", "info")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {}}
+
+    def detect(self):
+        try:
+            import torch
+            if torch.cuda.is_available():
+                gpu_name = torch.cuda.get_device_name(0)
+                total_vram = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+                used_vram = torch.cuda.memory_allocated(0) / (1024**3)
+                free_vram = total_vram - used_vram
+
+                # Suggest preset based on VRAM
+                if total_vram < 7:
+                    preset = "6GB"
+                elif total_vram < 10:
+                    preset = "8GB"
+                else:
+                    preset = "12GB"
+
+                info = f"""═══ GPU Detected ═══
+🖥️  GPU: {gpu_name}
+💾 Total VRAM: {total_vram:.1f} GB
+📊 Used: {used_vram:.1f} GB
+📊 Free: {free_vram:.1f} GB
+🎯 Suggested Preset: {preset}"""
+
+                print(f"\n[Performance Lab]\n{info}\n")
+                return (gpu_name, total_vram, preset, info)
+            else:
+                return ("No CUDA GPU", 0.0, "8GB", "❌ No CUDA GPU detected")
+        except Exception as e:
+            return ("Error", 0.0, "8GB", f"❌ Error: {e}")
+
+
+class PerfLab_ModelDetector:
+    """Model Detector - Detect model type from checkpoint name."""
+
+    DESCRIPTION = """🔍 MODEL DETECTOR
+
+Detects your model type from the checkpoint name!
+
+HOW TO USE:
+1. Enter or connect your checkpoint filename
+2. Get detected model type and optimal settings
+
+DETECTS:
+• SD 1.5 (sd15, v1-5, etc.)
+• SDXL (sdxl, xl, etc.)
+• SD3 (sd3, stable-diffusion-3)
+• Flux (flux, dev, schnell)
+
+OUTPUTS:
+• model_type: Detected model
+• optimal_cfg: Best CFG for this model
+• optimal_resolution: Best resolution
+• info: Detection details"""
+
+    CATEGORY = "⚡ Performance Lab/⭐ Start Here"
+    FUNCTION = "detect"
+    RETURN_TYPES = ("STRING", "FLOAT", "INT", "STRING")
+    RETURN_NAMES = ("model_type", "optimal_cfg", "optimal_resolution", "info")
+    OUTPUT_NODE = True
+
+    MODEL_PATTERNS = {
+        "Flux Schnell": ["schnell", "flux-schnell"],
+        "Flux Dev": ["flux", "flux-dev"],
+        "SD3": ["sd3", "stable-diffusion-3"],
+        "SDXL": ["sdxl", "xl-base", "xl_base"],
+        "SD 1.5": ["sd15", "v1-5", "sd_1.5", "1.5"],
+    }
+
+    MODEL_SETTINGS = {
+        "Flux Schnell": {"cfg": 1.0, "resolution": 1024},
+        "Flux Dev": {"cfg": 3.5, "resolution": 1024},
+        "SD3": {"cfg": 4.5, "resolution": 1024},
+        "SDXL": {"cfg": 7.0, "resolution": 1024},
+        "SD 1.5": {"cfg": 7.5, "resolution": 512},
+        "Unknown": {"cfg": 7.0, "resolution": 768},
+    }
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "checkpoint_name": ("STRING", {"default": "",
+                                   "tooltip": "Enter checkpoint filename or connect from loader"}),
+            }
+        }
+
+    def detect(self, checkpoint_name):
+        name_lower = checkpoint_name.lower()
+        detected = "Unknown"
+
+        for model_type, patterns in self.MODEL_PATTERNS.items():
+            for pattern in patterns:
+                if pattern in name_lower:
+                    detected = model_type
+                    break
+            if detected != "Unknown":
+                break
+
+        settings = self.MODEL_SETTINGS.get(detected, self.MODEL_SETTINGS["Unknown"])
+        cfg = settings["cfg"]
+        resolution = settings["resolution"]
+
+        info = f"""═══ Model Detection ═══
+📁 Checkpoint: {checkpoint_name}
+🎯 Detected: {detected}
+⚙️  Optimal CFG: {cfg}
+📐 Optimal Resolution: {resolution}x{resolution}"""
+
+        print(f"\n[Performance Lab]\n{info}\n")
+        return (detected, cfg, resolution, info)
+
+
+class PerfLab_TestModeToggle:
+    """Test Mode Toggle - Simple on/off for your whole workflow."""
+
+    DESCRIPTION = """🔘 TEST MODE TOGGLE
+
+THE SIMPLEST OPTIMIZATION!
+
+Just ONE toggle that outputs TRUE or FALSE.
+Connect this to enable/disable inputs on
+other nodes throughout your workflow.
+
+USE:
+• ON = Testing (connect to 'enabled' inputs)
+• OFF = Production
+
+CONNECT TO:
+• Cap Resolution 'enabled'
+• Reduce Steps 'enabled'
+• Low VRAM Preset 'enabled'
+• Any other 'enabled' input
+
+ONE TOGGLE CONTROLS YOUR WHOLE WORKFLOW!"""
+
+    CATEGORY = "⚡ Performance Lab/⭐ Start Here"
+    FUNCTION = "toggle"
+    RETURN_TYPES = ("BOOLEAN", "BOOLEAN", "STRING")
+    RETURN_NAMES = ("test_mode", "production_mode", "status")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "test_mode": ("BOOLEAN", {"default": True,
+                             "tooltip": "ON = testing mode, OFF = production mode"}),
+            }
+        }
+
+    def toggle(self, test_mode):
+        if test_mode:
+            status = "🧪 TEST MODE - Fast iteration, lower quality"
+        else:
+            status = "🎬 PRODUCTION MODE - Full quality output"
+
+        print(f"[Performance Lab] {status}")
+        return (test_mode, not test_mode, status)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # NODE REGISTRATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
 NODE_CLASS_MAPPINGS = {
+    # ⭐ Start Here (most user-friendly)
+    "PerfLab_OneClickOptimize": PerfLab_OneClickOptimize,
+    "PerfLab_QuickStart": PerfLab_QuickStart,
+    "PerfLab_TestModeToggle": PerfLab_TestModeToggle,
+    "PerfLab_AutoDetectGPU": PerfLab_AutoDetectGPU,
+    "PerfLab_ModelDetector": PerfLab_ModelDetector,
+
     # Monitoring
     "PerfLab_Timer": PerfLab_Timer,
     "PerfLab_Report": PerfLab_Report,
@@ -1616,6 +2073,13 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
+    # ⭐ Start Here (most user-friendly - shown first!)
+    "PerfLab_OneClickOptimize": "⚡ One-Click Optimize",
+    "PerfLab_QuickStart": "📚 Quick Start Guide",
+    "PerfLab_TestModeToggle": "🔘 Test Mode Toggle",
+    "PerfLab_AutoDetectGPU": "🔍 Auto Detect GPU",
+    "PerfLab_ModelDetector": "🔍 Model Detector",
+
     # Monitoring
     "PerfLab_Timer": "⏱️ Start Timer",
     "PerfLab_Report": "📊 Performance Report",
@@ -1660,6 +2124,7 @@ print(f"""
 ╠══════════════════════════════════════════════════════════════╣
 ║  {len(NODE_CLASS_MAPPINGS)} nodes in "⚡ Performance Lab" category:               ║
 ║                                                              ║
+║  ⭐ START HERE:    One-Click Optimize, Quick Start Guide     ║
 ║  📊 Monitoring:    Timer, Report, VRAM Monitor               ║
 ║  🚀 Optimize:      Cap Res, Steps, Batch, CFG, Presets       ║
 ║  🔍 Analysis:      Analyzer, Black Image Fix, Compare        ║
@@ -1667,5 +2132,7 @@ print(f"""
 ║  🔧 Utility:       Show Text, A/B Switches                   ║
 ║  📂 Meta-Workflow: Load, Queue, Benchmark                    ║
 ║  🌐 Network:       Health Check, Scanner                     ║
+║                                                              ║
+║  💡 New? Add "📚 Quick Start Guide" node for instructions!   ║
 ╚══════════════════════════════════════════════════════════════╝
 """)

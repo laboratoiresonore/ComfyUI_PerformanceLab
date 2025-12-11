@@ -2,11 +2,11 @@
 
 **Make any ComfyUI workflow faster, use less VRAM, or produce better quality - with help from AI.**
 
-![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.6.0-orange)
+![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.7.0-orange)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                   ⚡ COMFYUI PERFORMANCE LAB v0.6.0 ⚡                        ║
+║                   ⚡ COMFYUI PERFORMANCE LAB v0.7.0 ⚡                        ║
 ║           Load → Test → Get AI Suggestions → Accept/Reject → Repeat          ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -47,7 +47,7 @@ If you have [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) insta
 
 **After restart, you'll see:**
 
-- 22 new nodes in the **"⚡ Performance Lab"** category
+- 27 new nodes in the **"⚡ Performance Lab"** category
 - A startup message in the console confirming installation
 
 **To use the full CLI:**
@@ -234,9 +234,21 @@ The `ComfyUI_NetworkServices` custom node pack includes:
 
 ---
 
-## ComfyUI Nodes (v0.6.0)
+## ComfyUI Nodes (v0.7.0)
 
-After installation, find **22 nodes** in the **"⚡ Performance Lab"** category. Every node has a **?** tooltip explaining exactly how to use it.
+After installation, find **27 nodes** in the **"⚡ Performance Lab"** category. Every node has a **?** tooltip explaining exactly how to use it.
+
+### ⭐ Start Here (NEW in v0.7.0)
+
+The easiest way to get started! These nodes are designed for new users:
+
+| Node | What It Does |
+|------|-------------|
+| **⚡ One-Click Optimize** | Everything in one node! Toggle test/production mode |
+| **📚 Quick Start Guide** | Interactive guide with topics to learn |
+| **🔘 Test Mode Toggle** | Simple on/off for your whole workflow |
+| **🔍 Auto Detect GPU** | Automatically detects your GPU and suggests settings |
+| **🔍 Model Detector** | Detects model type from checkpoint name |
 
 ### Monitoring Nodes
 
@@ -411,6 +423,21 @@ ComfyUI_PerformanceLab/
 ---
 
 ## Version History
+
+**v0.7.0** - User Experience & ComfyUI Manager Integration
+
+- 5 NEW beginner-friendly nodes in "⭐ Start Here" category:
+  - **One-Click Optimize**: Single toggle controls everything
+  - **Quick Start Guide**: Interactive 5-topic guide for new users
+  - **Auto Detect GPU**: Automatically detects GPU and suggests settings
+  - **Model Detector**: Detects SD1.5/SDXL/Flux from checkpoint name
+  - **Test Mode Toggle**: Simple on/off for your whole workflow
+- Added tooltips to ALL input parameters (hover for help)
+- New `pyproject.toml` for proper ComfyUI Manager integration
+- Improved `requirements.txt` for better dependency management
+- Added `__all__` exports for cleaner module interface
+- Interactive "Getting Started" example workflow
+- Total: 27 nodes now available
 
 **v0.6.0** - Full Node Integration & Meta-Workflows
 

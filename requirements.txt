@@ -1,0 +1,5 @@
+# ComfyUI Performance Lab
+# No external dependencies required - uses Python standard library only
+#
+# Optional dev dependencies (for running tests):
+# pytest>=7.0.0
