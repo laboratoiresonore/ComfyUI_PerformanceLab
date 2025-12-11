@@ -5,11 +5,14 @@ __pycache__/
 !mods/*.py
 !examples/*.json
 
-# Markdown files (keep README visible on GitHub)
+# Markdown files (keep README and docs visible on GitHub)
 *.md
 !README.md
+!COMFYUI_MANAGER_SUBMISSION.md
 
 # Local files
 single_workflow_fix.py
 wan_5060ti_fix.py
 performancelab.code-workspace
+*_backup.py
+*.bak

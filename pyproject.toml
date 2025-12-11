@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-performance-lab"
-version = "0.7.0"
-description = "ComfyUI Performance Lab - Iterative workflow optimization with AI assistance. Make any workflow faster, use less VRAM, or produce better quality."
+version = "0.8.0"
+description = "Make any ComfyUI workflow faster, use less VRAM, or produce better quality - with AI assistance"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.8"
@@ -16,31 +16,12 @@ keywords = [
     "speed",
     "workflow",
     "ai",
-    "stable-diffusion"
-]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Multimedia :: Graphics",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "stable-diffusion",
+    "custom-nodes"
 ]
 
 # No external dependencies - uses only Python standard library
 dependencies = []
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-]
 
 [project.urls]
 Homepage = "https://github.com/laboratoiresonore/ComfyUI_PerformanceLab"
@@ -50,15 +31,3 @@ Issues = "https://github.com/laboratoiresonore/ComfyUI_PerformanceLab/issues"
 [tool.comfyui]
 PublisherId = "laboratoiresonore"
 DisplayName = "Performance Lab"
-Icon = "https://raw.githubusercontent.com/laboratoiresonore/ComfyUI_PerformanceLab/main/icon.png"
-
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-packages = ["comfyui_performance_lab"]
-package-dir = {"comfyui_performance_lab" = "."}
-
-[tool.setuptools.package-data]
-"*" = ["*.json", "*.md"]

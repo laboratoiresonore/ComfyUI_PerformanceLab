@@ -2648,22 +2648,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PerfLab_NetworkScanner": "🔍 Network Scanner",
 }
 
-# Print startup message
-print(f"""
-╔══════════════════════════════════════════════════════════════╗
-║          ⚡ Performance Lab v{__version__} Loaded! ⚡               ║
-╠══════════════════════════════════════════════════════════════╣
-║  {len(NODE_CLASS_MAPPINGS)} nodes in "⚡ Performance Lab" category:               ║
-║                                                              ║
-║  ⭐ START HERE:    One-Click Optimize, Quick Start Guide     ║
-║  📊 Monitoring:    Timer, Report, VRAM Monitor               ║
-║  🚀 Optimize:      Cap Res, Steps, Batch, CFG, Presets       ║
-║  🔍 Analysis:      Analyzer, Black Image Fix, Compare        ║
-║  🤖 LLM:           Generate Prompt, LLM Client, Auto Optimize ║
-║  🔧 Utility:       Show Text, A/B Switches                   ║
-║  📂 Meta-Workflow: Load, Queue, Benchmark                    ║
-║  🌐 Network:       Health Check, Scanner                     ║
-║                                                              ║
-║  💡 New? Add "📚 Quick Start Guide" node for instructions!   ║
-╚══════════════════════════════════════════════════════════════╝
-""")
+# Print startup message (simple, compatible with all terminals)
+print(f"[Performance Lab] v{__version__} loaded - {len(NODE_CLASS_MAPPINGS)} nodes available")
