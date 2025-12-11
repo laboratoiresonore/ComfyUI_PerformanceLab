@@ -401,6 +401,7 @@ class PromptGoal(Enum):
     VRAM = "vram"
     EXPLAIN = "explain"
     COMPARE = "compare"
+    DISTRIBUTED = "distributed"  # Multi-machine optimization
     CUSTOM = "custom"
 
 
@@ -702,6 +703,94 @@ Compare these two workflows and provide:
    - When would you use each one?
 
 Provide a clear summary table of differences.
+"""
+    ),
+
+    PromptGoal.DISTRIBUTED: PromptTemplate(
+        name="Distributed Optimization",
+        goal=PromptGoal.DISTRIBUTED,
+        description="Optimize multi-machine AI pipeline",
+        template="""# Distributed AI Pipeline Optimization Request
+
+## Goal
+Optimize this distributed workflow that orchestrates multiple AI services across different machines.
+
+## Workflow JSON
+```json
+{workflow_json}
+```
+
+## Network Topology
+{network_topology}
+
+## Machine Profiles
+{machine_profiles}
+
+## Current Latencies
+{latencies}
+
+## Dependency Graph
+{dependency_graph}
+
+## Detected Bottlenecks
+{bottlenecks}
+
+## System Context
+{system_specs}
+
+## Considerations
+- Network latency between services
+- GPU VRAM and memory constraints per machine
+- CPU vs GPU workload distribution
+- Opportunities for parallel execution
+- Model quantization options (int8, int4, q4_k_m, etc.)
+- Context window sizes for LLMs
+- Batch sizes for image generation
+- Failure handling and retry strategies
+- Load balancing if multiple endpoints available
+
+## Instructions
+Based on this distributed AI pipeline analysis, please provide:
+
+1. **Bottleneck Analysis**: Which machine/service is slowing down the pipeline and why?
+
+2. **Hardware Recommendations**: Based on the machine specs:
+   - Should any service move to a different machine?
+   - Are there VRAM/RAM constraints causing issues?
+   - Would different quantization help?
+
+3. **Configuration Recommendations**: Specific settings to adjust:
+   - Context sizes for LLMs
+   - Batch sizes for image generation
+   - Quality vs speed tradeoffs
+   - Suggested model alternatives
+
+4. **Architecture Recommendations**: Pipeline restructuring:
+   - Which operations can run in parallel?
+   - Should any operations be combined or split?
+   - Would caching help anywhere?
+
+5. **Optimized Workflow**: Provide the modified workflow JSON with your recommendations applied.
+
+Return your response in this format:
+```json
+{{
+  "bottleneck_analysis": {{
+    "primary_bottleneck": "description",
+    "machines_affected": ["endpoint1", "endpoint2"],
+    "root_cause": "explanation"
+  }},
+  "recommendations": {{
+    "hardware": ["recommendation1", "recommendation2"],
+    "configuration": ["recommendation1", "recommendation2"],
+    "architecture": ["recommendation1", "recommendation2"]
+  }},
+  "estimated_improvement": "X% faster / Y% less VRAM",
+  "workflow": {{ ... optimized workflow JSON ... }}
+}}
+```
+
+Please be specific and actionable. Reference the actual machine specs and endpoints provided.
 """
     ),
 

@@ -1,0 +1,11 @@
+# ComfyUI Network Services - Dependencies
+
+# HTTP requests
+requests>=2.28.0
+
+# Image handling
+Pillow>=9.0.0
+numpy>=1.21.0
+
+# Optional: WebSocket support for real-time ComfyUI communication
+# websocket-client>=1.4.0

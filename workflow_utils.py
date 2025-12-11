@@ -660,7 +660,7 @@ class WorkflowDiff:
             lines.append(f"~ {len(diff['modified_nodes'])} nodes modified")
             for n in diff["modified_nodes"][:5]:
                 changes_str = ", ".join([
-                    f"{c.get('property', f'widget[{c.get(\"widget_index\")}]')}"
+                    c.get('property', f"widget[{c.get('widget_index')}]")
                     for c in n["changes"][:3]
                 ])
                 lines.append(f"  ~ {n['type']}: {changes_str}")
@@ -695,3 +695,92 @@ def suggest_filename(original_path: str, modified: Dict) -> str:
     ext = original_path.rsplit(".", 1)[1] if "." in original_path else "json"
 
     return f"{base}_{fp.model_family.value}.{ext}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DISTRIBUTED WORKFLOW DETECTION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Network node types that indicate distributed workflows
+NETWORK_NODE_TYPES = {
+    "KoboldLLM": "llm",
+    "KoboldLLMAdvanced": "llm",
+    "RemoteComfyUI": "comfyui",
+    "RemoteComfyUISimple": "comfyui",
+    "LocalGenerator": "local_generator",
+    "LocalGeneratorBatch": "local_generator",
+    "EndpointHealthCheck": "health_check",
+    "MultiEndpointHealthCheck": "health_check",
+}
+
+
+def is_distributed_workflow(workflow: Dict) -> bool:
+    """Check if a workflow contains network service nodes."""
+    nodes = workflow.get("nodes", [])
+
+    if isinstance(nodes, list):
+        for node in nodes:
+            if isinstance(node, dict):
+                node_type = node.get("type") or node.get("class_type", "")
+                if node_type in NETWORK_NODE_TYPES:
+                    return True
+    elif isinstance(nodes, dict):
+        for node_id, node in nodes.items():
+            if isinstance(node, dict):
+                node_type = node.get("type") or node.get("class_type", "")
+                if node_type in NETWORK_NODE_TYPES:
+                    return True
+
+    return False
+
+
+def get_network_nodes_summary(workflow: Dict) -> Dict[str, int]:
+    """Get a summary of network nodes in the workflow."""
+    summary: Dict[str, int] = {}
+    nodes = workflow.get("nodes", [])
+
+    if isinstance(nodes, list):
+        node_iter = nodes
+    else:
+        node_iter = nodes.values()
+
+    for node in node_iter:
+        if isinstance(node, dict):
+            node_type = node.get("type") or node.get("class_type", "")
+            if node_type in NETWORK_NODE_TYPES:
+                service = NETWORK_NODE_TYPES[node_type]
+                summary[service] = summary.get(service, 0) + 1
+
+    return summary
+
+
+def extract_endpoints_from_workflow(workflow: Dict) -> List[str]:
+    """Extract all endpoint URLs from network nodes in a workflow."""
+    endpoints = []
+    nodes = workflow.get("nodes", [])
+
+    if isinstance(nodes, list):
+        node_iter = nodes
+    else:
+        node_iter = nodes.values()
+
+    for node in node_iter:
+        if isinstance(node, dict):
+            node_type = node.get("type") or node.get("class_type", "")
+            if node_type in NETWORK_NODE_TYPES:
+                # Check widgets_values
+                widgets = node.get("widgets_values", [])
+                if isinstance(widgets, list):
+                    for val in widgets:
+                        if isinstance(val, str) and val.startswith("http"):
+                            if val not in endpoints:
+                                endpoints.append(val)
+
+                # Check inputs dict
+                inputs = node.get("inputs", {})
+                if isinstance(inputs, dict):
+                    endpoint = inputs.get("endpoint", "")
+                    if endpoint and endpoint.startswith("http") and endpoint not in endpoints:
+                        endpoints.append(endpoint)
+
+    return endpoints

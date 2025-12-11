@@ -72,7 +72,7 @@ except ImportError:
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 MODS_DIR = "mods"
 COMFY_URL = "http://127.0.0.1:8188"
 SESSION_LOG = "session_history.json"
@@ -1547,6 +1547,8 @@ class PerformanceLab:
                 self.save_as_menu()
             elif choice == 'u':
                 self.update_performance_lab()
+            elif choice == 'd':
+                self.distributed_menu()
             else:
                 print(f"  {styled('Invalid choice', Style.YELLOW)}")
 
@@ -1638,6 +1640,7 @@ class PerformanceLab:
             ("M", "🎛️  Model Tuner", "Auto-detect & optimize", Style.GREEN),
             ("B", "🎨 Beautify", "Organize & clean up", Style.MAGENTA),
             ("U", "🔄 Update", "Pull latest from GitHub", Style.CYAN),
+            ("D", "🌐 Distributed", "Multi-machine optimizer", Style.GREEN),
             ("C", "Test Connection", "", Style.WHITE),
             ("T", "Change Target", "", Style.WHITE),
             ("S", "Save As...", "Save to new file", Style.WHITE),
@@ -2938,6 +2941,253 @@ class PerformanceLab:
             print(f"  {styled('✗ Error:', Style.RED)} {e}")
 
         input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
+
+    def distributed_menu(self):
+        """Distributed workflow analysis and optimization."""
+        from distributed_optimizer import (
+            DistributedWorkflowAnalyzer,
+            DistributedWorkflowOptimizer,
+            MachineProfile
+        )
+        from workflow_utils import (
+            is_distributed_workflow,
+            get_network_nodes_summary,
+            extract_endpoints_from_workflow
+        )
+
+        print_box("🌐 Distributed Workflow Optimizer", [
+            "Analyze and optimize multi-machine AI pipelines.",
+            "Detects network service nodes and measures latencies.",
+        ], Style.GREEN, icon="")
+
+        if not self.workflow_content:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Load a workflow first.")
+            input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
+            return
+
+        # Check if workflow has network nodes
+        is_distributed = is_distributed_workflow(self.workflow_content)
+        summary = get_network_nodes_summary(self.workflow_content)
+        endpoints = extract_endpoints_from_workflow(self.workflow_content)
+
+        if not is_distributed:
+            print(f"\n  {styled('⚠', Style.YELLOW)} No network service nodes found in this workflow.")
+            print(f"\n  {styled('Tip:', Style.DIM)} This feature works with workflows that use:")
+            print(f"      • KoboldLLM nodes (for LLM on other machines)")
+            print(f"      • RemoteComfyUI nodes (for SD/video on other machines)")
+            print(f"      • LocalGenerator nodes (for any AI service)")
+            print(f"\n  {styled('Install the ComfyUI_NetworkServices node pack:', Style.CYAN)}")
+            print(f"      custom_nodes/ComfyUI_NetworkServices/")
+            input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
+            return
+
+        # Show detected network nodes
+        print(f"\n  {styled('Network Services Detected:', Style.CYAN)}")
+        for service, count in summary.items():
+            print(f"    • {service}: {count} node(s)")
+
+        print(f"\n  {styled('Endpoints:', Style.CYAN)}")
+        for endpoint in endpoints:
+            print(f"    • {endpoint}")
+
+        # Menu options
+        print(f"\n  {styled('Options:', Style.WHITE)}")
+        options = [
+            ("1", "Health Check All Endpoints", "Test connectivity"),
+            ("2", "Measure Latencies", "Round-trip time to each service"),
+            ("3", "Analyze Dependencies", "Show execution order"),
+            ("4", "Find Parallel Opportunities", "Nodes that can run together"),
+            ("5", "Generate LLM Optimization Prompt", "Get AI recommendations"),
+            ("6", "Register Machine Profiles", "Add GPU/CPU specs for LLM context"),
+            ("B", "Back to main menu", ""),
+        ]
+
+        for key, label, hint in options:
+            hint_str = styled(f" ({hint})", Style.DIM) if hint else ""
+            print(f"    {styled(key, Style.CYAN)} {label}{hint_str}")
+
+        choice = input(f"\n  {styled('▶', Style.CYAN)} Select option: ").strip().lower()
+
+        if choice == 'b':
+            return
+        elif choice == '1':
+            self._distributed_health_check(endpoints)
+        elif choice == '2':
+            self._distributed_latency_test(endpoints)
+        elif choice == '3':
+            self._distributed_dependency_analysis()
+        elif choice == '4':
+            self._distributed_parallel_analysis()
+        elif choice == '5':
+            self._distributed_llm_prompt()
+        elif choice == '6':
+            self._distributed_register_machines()
+        else:
+            print(f"  {styled('Invalid choice', Style.YELLOW)}")
+
+        input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
+
+    def _distributed_health_check(self, endpoints: list):
+        """Health check all endpoints."""
+        from distributed_optimizer import DistributedWorkflowAnalyzer
+
+        print(f"\n  {styled('Checking endpoints...', Style.CYAN)}")
+
+        analyzer = DistributedWorkflowAnalyzer()
+        results = analyzer.check_all_endpoints(self.workflow_content)
+
+        print(f"\n  {styled('Results:', Style.WHITE)}")
+        for endpoint, status in results.items():
+            if status.get("healthy"):
+                latency = status.get("latency_ms", "N/A")
+                print(f"    {styled('✓', Style.GREEN)} {endpoint} ({latency}ms)")
+            else:
+                error = status.get("error", "unreachable")
+                print(f"    {styled('✗', Style.RED)} {endpoint} - {error}")
+
+    def _distributed_latency_test(self, endpoints: list):
+        """Measure latencies to all endpoints."""
+        import time
+        import requests
+
+        print(f"\n  {styled('Measuring latencies (3 samples each)...', Style.CYAN)}")
+
+        for endpoint in endpoints:
+            latencies = []
+            for _ in range(3):
+                try:
+                    start = time.time()
+                    requests.get(endpoint, timeout=10)
+                    latencies.append((time.time() - start) * 1000)
+                except:
+                    pass
+
+            if latencies:
+                avg = sum(latencies) / len(latencies)
+                min_lat = min(latencies)
+                max_lat = max(latencies)
+                print(f"    {styled('•', Style.CYAN)} {endpoint}")
+                print(f"      avg: {avg:.0f}ms, min: {min_lat:.0f}ms, max: {max_lat:.0f}ms")
+            else:
+                print(f"    {styled('✗', Style.RED)} {endpoint} - unreachable")
+
+    def _distributed_dependency_analysis(self):
+        """Analyze dependencies in the workflow."""
+        from distributed_optimizer import DistributedWorkflowAnalyzer
+
+        analyzer = DistributedWorkflowAnalyzer()
+        deps = analyzer.build_dependency_graph(self.workflow_content)
+        nodes = analyzer.detect_network_nodes(self.workflow_content)
+
+        print(f"\n  {styled('Network Node Dependencies:', Style.WHITE)}")
+        for node in nodes:
+            node_deps = deps.get(node.node_id, [])
+            if node_deps:
+                print(f"    [{node.node_id}] {node.node_type} <- depends on: {node_deps}")
+            else:
+                print(f"    [{node.node_id}] {node.node_type} <- (root node)")
+
+    def _distributed_parallel_analysis(self):
+        """Find parallelization opportunities."""
+        from distributed_optimizer import DistributedWorkflowAnalyzer
+
+        analyzer = DistributedWorkflowAnalyzer()
+        parallel = analyzer.find_parallel_opportunities(self.workflow_content)
+
+        if parallel:
+            print(f"\n  {styled('Parallelization Opportunities:', Style.GREEN)}")
+            for group in parallel:
+                print(f"    {styled('•', Style.CYAN)} Nodes {', '.join(group)} can run in parallel")
+        else:
+            print(f"\n  {styled('No parallelization opportunities found.', Style.YELLOW)}")
+            print(f"    All network nodes have sequential dependencies.")
+
+    def _distributed_llm_prompt(self):
+        """Generate LLM optimization prompt for distributed workflow."""
+        from distributed_optimizer import DistributedWorkflowOptimizer, MachineProfile
+
+        optimizer = DistributedWorkflowOptimizer()
+
+        # Check for registered machines
+        config_machines = self.config.get("distributed_machines", [])
+        for m in config_machines:
+            optimizer.register_machine(MachineProfile(**m))
+
+        analysis = optimizer.analyze(self.workflow_content)
+        prompt = optimizer.generate_llm_prompt(self.workflow_content, analysis)
+
+        print(f"\n  {styled('Generated LLM Optimization Prompt:', Style.CYAN)}")
+        print(f"  {styled('(Copy this to Claude, GPT-4, or another LLM)', Style.DIM)}")
+        print()
+        print("-" * 60)
+        print(prompt[:2000])  # Show first 2000 chars
+        if len(prompt) > 2000:
+            print(f"\n... [{len(prompt) - 2000} more characters]")
+        print("-" * 60)
+
+        # Offer to copy to clipboard
+        try:
+            import pyperclip
+            copy = input(f"\n  {styled('▶', Style.CYAN)} Copy to clipboard? (y/n): ").strip().lower()
+            if copy == 'y':
+                pyperclip.copy(prompt)
+                print(f"  {styled('✓', Style.GREEN)} Copied to clipboard!")
+        except ImportError:
+            print(f"\n  {styled('Tip:', Style.DIM)} Install pyperclip for clipboard support")
+
+    def _distributed_register_machines(self):
+        """Register machine profiles for LLM context."""
+        from distributed_optimizer import MachineProfile
+
+        print(f"\n  {styled('Register Machine Profile', Style.CYAN)}")
+        print(f"  {styled('Add hardware specs so LLM can give specific recommendations.', Style.DIM)}")
+
+        machines = self.config.get("distributed_machines", [])
+
+        print(f"\n  {styled('Registered Machines:', Style.WHITE)} {len(machines)}")
+        for i, m in enumerate(machines):
+            print(f"    {i+1}. {m.get('name', 'Unnamed')} @ {m.get('endpoint', 'N/A')}")
+
+        print(f"\n  {styled('A', Style.CYAN)} Add new machine")
+        print(f"  {styled('R', Style.CYAN)} Remove machine")
+        print(f"  {styled('B', Style.CYAN)} Back")
+
+        choice = input(f"\n  {styled('▶', Style.CYAN)} Select: ").strip().lower()
+
+        if choice == 'a':
+            print(f"\n  {styled('Add Machine Profile:', Style.WHITE)}")
+            name = input(f"    Machine name (e.g. 'GPU Server 1'): ").strip()
+            endpoint = input(f"    Endpoint URL: ").strip()
+            specs = input(f"    Specs (e.g. 'RTX 4090 24GB, 64GB RAM'): ").strip()
+            gpu = input(f"    GPU model: ").strip()
+            vram = input(f"    GPU VRAM (GB, 0 for unknown): ").strip()
+            description = input(f"    Description: ").strip()
+            docs_url = input(f"    Documentation URL (optional): ").strip()
+
+            new_machine = {
+                "name": name,
+                "endpoint": endpoint,
+                "specs": specs,
+                "gpu_model": gpu,
+                "gpu_vram_gb": float(vram) if vram else 0.0,
+                "description": description,
+                "docs_url": docs_url,
+            }
+
+            machines.append(new_machine)
+            self.config.set("distributed_machines", machines)
+            print(f"  {styled('✓', Style.GREEN)} Machine added!")
+
+        elif choice == 'r' and machines:
+            idx = input(f"    Enter machine number to remove: ").strip()
+            try:
+                idx = int(idx) - 1
+                if 0 <= idx < len(machines):
+                    removed = machines.pop(idx)
+                    self.config.set("distributed_machines", machines)
+                    print(f"  {styled('✓', Style.GREEN)} Removed {removed.get('name')}")
+            except:
+                print(f"  {styled('Invalid selection', Style.YELLOW)}")
 
     def generate_llm_prompt(self):
         """Generate a prompt for external LLM analysis."""

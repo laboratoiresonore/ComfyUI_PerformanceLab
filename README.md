@@ -17,9 +17,38 @@
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.3.0-orange)
+![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.4.0-orange)
 
-## What's New in v0.3
+## What's New in v0.4 - Multi-Machine Distributed Optimization
+
+| Feature | Description |
+|---------|-------------|
+| 🌐 **Distributed Menu** | New [D] menu for multi-machine AI pipeline optimization |
+| 🔌 **Network Service Nodes** | ComfyUI_NetworkServices node pack with 70+ service presets |
+| 🦙 **KoboldLLM Node** | Connect to Kobold instances for LLM on remote machines |
+| 🖼️ **RemoteComfyUI Node** | Execute SD/Flux/video workflows on remote ComfyUI servers |
+| 🎛️ **LocalGenerator Node** | Universal REST API node for any AI service (STT, TTS, Embeddings, etc.) |
+| 💓 **Health Check Nodes** | Monitor endpoint availability and measure latencies |
+| 🗺️ **Machine Profiles** | Register GPU/CPU specs for each machine in your network |
+| 📊 **Bottleneck Detection** | Identify which machine is slowing your pipeline |
+| ⚡ **Parallel Analysis** | Find nodes that can run simultaneously |
+| 🤖 **Distributed LLM Prompts** | Generate prompts that include machine specs for better recommendations |
+
+### Supported Services (70+ presets)
+
+**Image/Video**: ComfyUI, Automatic1111, Forge, InvokeAI, Fooocus, SwarmUI, Kohya, AnimateDiff, SVD, Mochi, CogVideo, Hunyuan, LTX-Video
+
+**LLM**: KoboldCpp, Ollama, llama.cpp, Text-Gen-WebUI, vLLM, LMDeploy, TGI, LocalAI, Jan, LM Studio, GPT4All, ExLlama, TabbyAPI, Aphrodite
+
+**STT**: Whisper, Faster-Whisper, whisper.cpp, WhisperX, NeMo ASR, Vosk
+
+**TTS**: Coqui TTS, XTTS, AllTalk, Silero, Piper, Bark, Tortoise, StyleTTS2, OpenVoice, Fish Speech
+
+**Embeddings**: Text Embeddings Inference, Sentence Transformers, Infinity, FastEmbed
+
+**And more**: LLaVA, CogVLM, Moondream, AudioCraft, MusicGen, Real-ESRGAN, GFPGAN, SAM, Florence-2...
+
+### Previous Features (v0.3) - LLM Enhancement
 
 | Feature | Description |
 |---------|-------------|
