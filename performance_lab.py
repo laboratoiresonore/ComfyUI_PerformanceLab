@@ -143,6 +143,56 @@ def styled(text: str, *styles) -> str:
     prefix = "".join(styles)
     return f"{prefix}{text}{Style.RESET}" if prefix else text
 
+
+def vram_sparkline(readings: List[float], width: int = 30) -> str:
+    """Generate ASCII sparkline for VRAM usage over time.
+
+    Args:
+        readings: List of VRAM readings in GB
+        width: Width of sparkline in characters
+
+    Returns:
+        ASCII sparkline string with min/max labels
+    """
+    if not readings or len(readings) < 2:
+        return ""
+
+    # Sparkline characters from low to high
+    chars = "▁▂▃▄▅▆▇█"
+
+    min_val = min(readings)
+    max_val = max(readings)
+    range_val = max_val - min_val
+
+    # If flat line, use middle character
+    if range_val < 0.01:
+        sparkline = chars[3] * min(width, len(readings))
+    else:
+        # Downsample or upsample to target width
+        if len(readings) > width:
+            # Average chunks
+            chunk_size = len(readings) / width
+            sampled = []
+            for i in range(width):
+                start = int(i * chunk_size)
+                end = int((i + 1) * chunk_size)
+                chunk = readings[start:end]
+                sampled.append(sum(chunk) / len(chunk) if chunk else min_val)
+            readings = sampled
+        elif len(readings) < width:
+            # Just use what we have
+            pass
+
+        # Build sparkline
+        sparkline = ""
+        for val in readings:
+            normalized = (val - min_val) / range_val
+            idx = min(int(normalized * (len(chars) - 1)), len(chars) - 1)
+            sparkline += chars[idx]
+
+    return f"{min_val:.1f}GB {styled(sparkline, Style.CYAN)} {max_val:.1f}GB"
+
+
 def clear_screen():
     """Clear the terminal screen."""
     os.system('cls' if platform.system() == 'Windows' else 'clear')
@@ -847,6 +897,129 @@ class WorkflowAnalyzer:
 
         return suggestions
 
+    @staticmethod
+    def diagnose_black_image(workflow: Dict) -> List[Dict]:
+        """Diagnose potential causes of black image output.
+
+        Returns list of potential issues with explanations and fixes.
+        """
+        issues = []
+        nodes = workflow.get("nodes", [])
+        node_types = [n.get("type", "").lower() for n in nodes]
+
+        # Check for missing VAE
+        has_vae_loader = any("vae" in t and "load" in t for t in node_types)
+        has_vae_decode = any("vaedecode" in t for t in node_types)
+        has_checkpoint = any("checkpoint" in t for t in node_types)
+
+        if has_checkpoint and has_vae_decode and not has_vae_loader:
+            # Using checkpoint VAE - may need separate VAE
+            issues.append({
+                "likelihood": "high",
+                "issue": "Using checkpoint's built-in VAE",
+                "explanation": "Some checkpoints have weak VAEs that produce dark/black images",
+                "fix": "Try adding a separate VAE loader node (e.g., vae-ft-mse-840000)"
+            })
+
+        # Check CFG scale
+        for node in nodes:
+            widgets = node.get("widgets_values", [])
+            node_type = node.get("type", "").lower()
+            if "sampler" in node_type or "ksampler" in node_type:
+                # CFG is usually around index 3-4 in KSampler
+                for val in widgets:
+                    if isinstance(val, (int, float)) and 0 < val < 50:
+                        if val < 1:
+                            issues.append({
+                                "likelihood": "high",
+                                "issue": f"CFG scale too low ({val})",
+                                "explanation": "CFG < 1 often produces very dark or empty images",
+                                "fix": "Increase CFG to 5-8 for most models"
+                            })
+                        elif val > 20:
+                            issues.append({
+                                "likelihood": "medium",
+                                "issue": f"CFG scale very high ({val})",
+                                "explanation": "Very high CFG can cause artifacts or burned images",
+                                "fix": "Try reducing CFG to 7-12"
+                            })
+                        break
+
+        # Check for Flux with wrong CFG
+        has_flux = any("flux" in t for t in node_types)
+        if has_flux:
+            for node in nodes:
+                widgets = node.get("widgets_values", [])
+                node_type = node.get("type", "").lower()
+                if "sampler" in node_type:
+                    for val in widgets:
+                        if isinstance(val, (int, float)) and val > 3:
+                            issues.append({
+                                "likelihood": "high",
+                                "issue": "High CFG with Flux model",
+                                "explanation": "Flux works best with CFG 1-3. Higher values cause black/burned images",
+                                "fix": "Set CFG to 1.0-2.0 for Flux"
+                            })
+                            break
+
+        # Check steps
+        for node in nodes:
+            node_type = node.get("type", "").lower()
+            if "sampler" in node_type:
+                widgets = node.get("widgets_values", [])
+                for val in widgets:
+                    if isinstance(val, int) and 1 <= val <= 5:
+                        issues.append({
+                            "likelihood": "medium",
+                            "issue": f"Very low step count ({val})",
+                            "explanation": "Too few steps can produce incomplete/dark images",
+                            "fix": "Increase steps to at least 15-20"
+                        })
+                        break
+
+        # Check empty latent dimensions
+        for node in nodes:
+            node_type = node.get("type", "").lower()
+            if "emptylatent" in node_type:
+                widgets = node.get("widgets_values", [])
+                if len(widgets) >= 2:
+                    w, h = widgets[0], widgets[1]
+                    if isinstance(w, int) and isinstance(h, int):
+                        if w < 64 or h < 64:
+                            issues.append({
+                                "likelihood": "high",
+                                "issue": f"Latent dimensions too small ({w}x{h})",
+                                "explanation": "Very small latent size produces no usable output",
+                                "fix": "Use at least 512x512 for SD1.5, 1024x1024 for SDXL/Flux"
+                            })
+
+        # Check for negative prompt issues
+        has_clip_encode = any("cliptextencode" in t for t in node_types)
+        clip_nodes = [n for n in nodes if "cliptextencode" in n.get("type", "").lower()]
+        if len(clip_nodes) == 1:
+            issues.append({
+                "likelihood": "low",
+                "issue": "Only one CLIP text encode node",
+                "explanation": "Missing negative prompt - may reduce image quality/control",
+                "fix": "Add a negative prompt with common excludes (blurry, low quality, etc.)"
+            })
+
+        # Check for disconnected nodes (simplified check)
+        if not issues:
+            issues.append({
+                "likelihood": "info",
+                "issue": "No obvious issues detected",
+                "explanation": "Black images may be caused by: model incompatibility, broken links, or inference errors",
+                "fix": "Check ComfyUI console for errors, verify all nodes are connected"
+            })
+
+        # Sort by likelihood
+        likelihood_order = {"high": 0, "medium": 1, "low": 2, "info": 3}
+        issues.sort(key=lambda x: likelihood_order.get(x["likelihood"], 4))
+
+        return issues
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # SESSION HISTORY TRACKER (Enhanced)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -950,6 +1123,35 @@ class SessionHistory:
             if e["kept"] and e["result"].get("success"):
                 trend.append((e["mod_name"], e["result"]["duration_seconds"]))
         return trend
+
+    def get_failed_attempts(self) -> str:
+        """Get summary of failed/rejected optimization attempts for LLM context."""
+        failed = []
+        for e in self.entries:
+            if not e["kept"] or not e["result"].get("success"):
+                reason = ""
+                if not e["result"].get("success"):
+                    reason = f"failed: {e['result'].get('error_message', 'unknown error')}"
+                else:
+                    reason = "rejected by user (worse performance)"
+                failed.append(f"- {e['mod_name']}: {e['mod_description'][:50]}... ({reason})")
+
+        if not failed:
+            return ""
+        return "\n".join(failed)
+
+    def get_kept_attempts(self) -> str:
+        """Get summary of successful/kept optimization attempts."""
+        kept = []
+        for e in self.entries:
+            if e["kept"] and e["result"].get("success"):
+                dur = e["result"].get("duration_seconds", 0)
+                change = e.get("speed_change_percent", 0)
+                kept.append(f"- {e['mod_name']}: {dur:.1f}s ({change:+.1f}%)")
+
+        if not kept:
+            return ""
+        return "\n".join(kept)
 
     def to_dict(self) -> Dict:
         """Export session as dictionary."""
@@ -1070,6 +1272,22 @@ class LLMPromptGenerator:
                     perf = "Not tested"
                 prompt_parts.append(f"{e['iteration']}. [{status}] {e['mod_name']}: {e['mod_description'][:60]}")
                 prompt_parts.append(f"   Result: {perf}")
+            prompt_parts.append("")
+
+        # Already tried (failed/rejected) - help LLM avoid repeating
+        failed_attempts = session.get_failed_attempts()
+        if failed_attempts:
+            prompt_parts.append("## ALREADY TRIED (don't repeat these)")
+            prompt_parts.append("These optimizations were tried but failed or made things worse:")
+            prompt_parts.append(failed_attempts)
+            prompt_parts.append("")
+
+        # Successful optimizations applied
+        kept_attempts = session.get_kept_attempts()
+        if kept_attempts:
+            prompt_parts.append("## SUCCESSFUL OPTIMIZATIONS APPLIED")
+            prompt_parts.append("These optimizations are already applied and working:")
+            prompt_parts.append(kept_attempts)
             prompt_parts.append("")
 
         # Node type distribution
@@ -1543,6 +1761,8 @@ class PerformanceLab:
                 self.model_tuner_menu()
             elif choice == 'b':
                 self.beautify_menu()
+            elif choice == 'x':
+                self.black_image_diagnostic()
             elif choice == 's':
                 self.save_as_menu()
             elif choice == 'u':
@@ -1639,6 +1859,7 @@ class PerformanceLab:
             ("L", "🤖 LLM Enhancer", "Advanced AI context", Style.GREEN),
             ("M", "🎛️  Model Tuner", "Auto-detect & optimize", Style.GREEN),
             ("B", "🎨 Beautify", "Organize & clean up", Style.MAGENTA),
+            ("X", "🔍 Black Image Fix", "Diagnose dark/empty images", Style.YELLOW),
             ("U", "🔄 Update", "Pull latest from GitHub", Style.CYAN),
             ("D", "🌐 Distributed", "Multi-machine optimizer", Style.GREEN),
             ("C", "Test Connection", "", Style.WHITE),
@@ -1660,19 +1881,54 @@ class PerformanceLab:
             return
 
         suggestions = WorkflowAnalyzer.get_smart_suggestions(self.session.workflow_analysis)
+        analysis = self.session.workflow_analysis
+
+        # Calculate specific estimated impacts based on workflow
+        def estimate_impact(action_type: str) -> str:
+            """Calculate estimated impact based on current workflow."""
+            if action_type == "cap_768":
+                max_res = max(analysis.get("resolution_hints", [512]))
+                if max_res > 768:
+                    # VRAM scales roughly quadratically with resolution
+                    reduction = ((max_res ** 2) - (768 ** 2)) / (max_res ** 2) * 100
+                    return f"~{int(reduction)}% VRAM, from {max_res}→768px"
+                return "Already ≤768px"
+            elif action_type == "cap_1024":
+                max_res = max(analysis.get("resolution_hints", [512]))
+                if max_res > 1024:
+                    reduction = ((max_res ** 2) - (1024 ** 2)) / (max_res ** 2) * 100
+                    return f"~{int(reduction)}% VRAM, from {max_res}→1024px"
+                return "Already ≤1024px"
+            elif action_type == "bypass_upscalers":
+                if analysis.get("features", {}).get("has_upscale"):
+                    return "2-4GB VRAM, skip upscale"
+                return "No upscalers found"
+            elif action_type == "reduce_steps":
+                max_steps = max(analysis.get("step_counts", [20]))
+                if max_steps > 20:
+                    reduction = ((max_steps - 20) / max_steps) * 100
+                    return f"~{int(reduction)}% faster, {max_steps}→20 steps"
+                return "Already ≤20 steps"
+            elif action_type == "reduce_batch":
+                max_batch = max(analysis.get("batch_sizes", [1]))
+                if max_batch > 1:
+                    reduction = ((max_batch - 1) / max_batch) * 100
+                    return f"~{int(reduction)}% VRAM, batch {max_batch}→1"
+                return "Already batch=1"
+            return ""
 
         print_box("⚡ Quick Actions", [
             "One-key optimizations based on your workflow analysis.",
-            "These create an experimental file for testing.",
+            "Estimated impacts are calculated from your current settings.",
         ], Style.YELLOW, icon="")
 
-        # Built-in quick actions
+        # Built-in quick actions with dynamic impact
         quick_actions = [
-            ("1", "Cap resolution to 768px", "cap_resolution_768", "~60% faster"),
-            ("2", "Cap resolution to 1024px", "cap_resolution_1024", "~40% faster"),
-            ("3", "Bypass all upscalers", "bypass_upscalers", "2-4GB VRAM saved"),
-            ("4", "Reduce steps to 20", "reduce_steps_20", "Faster iteration"),
-            ("5", "Reduce batch to 1", "reduce_batch_1", "VRAM reduction"),
+            ("1", "Cap resolution to 768px", "cap_resolution_768", estimate_impact("cap_768")),
+            ("2", "Cap resolution to 1024px", "cap_resolution_1024", estimate_impact("cap_1024")),
+            ("3", "Bypass all upscalers", "bypass_upscalers", estimate_impact("bypass_upscalers")),
+            ("4", "Reduce steps to 20", "reduce_steps_20", estimate_impact("reduce_steps")),
+            ("5", "Reduce batch to 1", "reduce_batch_1", estimate_impact("reduce_batch")),
             ("6", "🚀 Speed Test Preset", "speed_test", "All optimizations"),
             ("7", "💾 8GB VRAM Preset", "vram_8gb", "Fit on 8GB cards"),
             ("R", "↩️  Revert to Original", "revert", "Undo all changes"),
@@ -1680,7 +1936,12 @@ class PerformanceLab:
 
         print()
         for key, label, action, impact in quick_actions:
-            print(f"    {styled(key, Style.CYAN)} {label} {styled(f'[{impact}]', Style.DIM)}")
+            # Color-code impact: green if actionable, dim if not needed
+            if "Already" in impact or "No " in impact:
+                impact_styled = styled(f"[{impact}]", Style.DIM)
+            else:
+                impact_styled = styled(f"[{impact}]", Style.GREEN)
+            print(f"    {styled(key, Style.CYAN)} {label} {impact_styled}")
 
         print(f"\n    {styled('B', Style.CYAN)} Back to main menu")
 
@@ -1855,20 +2116,51 @@ class PerformanceLab:
             avg_vram = result.get("avg_vram_gb", 0)
             base_vram = result.get("baseline_vram_gb", 0)
 
-            print(f"    Duration:    {styled(f'{duration:.2f}s', Style.BOLD)}")
-            print(f"    Peak VRAM:   {styled(f'{peak_vram:.2f} GB', Style.BOLD)}")
-            print(f"    Avg VRAM:    {avg_vram:.2f} GB")
-            print(f"    Base VRAM:   {base_vram:.2f} GB")
-
-            # Compare to baseline
+            # Before/After comparison table if baseline exists
             if self.session.baseline_result:
                 baseline_dur = self.session.baseline_result.get("duration_seconds", 0)
-                if baseline_dur > 0:
-                    change = ((duration - baseline_dur) / baseline_dur) * 100
-                    if change < 0:
-                        print(f"    {styled(f'⚡ {abs(change):.1f}% FASTER than baseline!', Style.GREEN)}")
-                    else:
-                        print(f"    {styled(f'⚠ {change:.1f}% slower than baseline', Style.YELLOW)}")
+                baseline_peak = self.session.baseline_result.get("peak_vram_gb", 0)
+                baseline_avg = self.session.baseline_result.get("avg_vram_gb", 0)
+
+                # Calculate changes
+                dur_change = ((duration - baseline_dur) / baseline_dur * 100) if baseline_dur > 0 else 0
+                vram_change = ((peak_vram - baseline_peak) / baseline_peak * 100) if baseline_peak > 0 else 0
+
+                def format_change(val):
+                    if val < 0:
+                        return styled(f"{val:+.1f}%", Style.GREEN)
+                    elif val > 0:
+                        return styled(f"{val:+.1f}%", Style.RED)
+                    return styled("0%", Style.DIM)
+
+                # Print comparison table
+                print(f"    ┌──────────────┬────────────┬────────────┬──────────┐")
+                print(f"    │   {styled('Metric', Style.BOLD)}       │  {styled('Before', Style.DIM)}    │  {styled('After', Style.BOLD)}     │ {styled('Change', Style.BOLD)}   │")
+                print(f"    ├──────────────┼────────────┼────────────┼──────────┤")
+                print(f"    │ Duration     │ {baseline_dur:>8.2f}s  │ {duration:>8.2f}s  │ {format_change(dur_change):>8} │")
+                print(f"    │ Peak VRAM    │ {baseline_peak:>7.2f} GB │ {peak_vram:>7.2f} GB │ {format_change(vram_change):>8} │")
+                print(f"    │ Avg VRAM     │ {baseline_avg:>7.2f} GB │ {avg_vram:>7.2f} GB │    -     │")
+                print(f"    └──────────────┴────────────┴────────────┴──────────┘")
+
+                # Summary verdict
+                if dur_change < -5:
+                    print(f"\n    {styled(f'⚡ {abs(dur_change):.1f}% FASTER!', Style.GREEN, Style.BOLD)}")
+                elif dur_change > 5:
+                    print(f"\n    {styled(f'⚠ {dur_change:.1f}% slower', Style.YELLOW)}")
+
+            else:
+                # No baseline - show simple results
+                print(f"    Duration:    {styled(f'{duration:.2f}s', Style.BOLD)}")
+                print(f"    Peak VRAM:   {styled(f'{peak_vram:.2f} GB', Style.BOLD)}")
+                print(f"    Avg VRAM:    {avg_vram:.2f} GB")
+                print(f"    Base VRAM:   {base_vram:.2f} GB")
+
+            # Show VRAM sparkline if we have readings
+            vram_readings = result.get("vram_readings", [])
+            if vram_readings and len(vram_readings) >= 2:
+                sparkline = vram_sparkline(vram_readings)
+                if sparkline:
+                    print(f"\n    VRAM over time: {sparkline}")
 
         elif result.get("success") is False:
             print(f"  {styled('💥 GENERATION FAILED', Style.RED, Style.BOLD)}")
@@ -1925,6 +2217,41 @@ class PerformanceLab:
             print(f"     {styled('Impact:', Style.DIM)} {s['impact']}")
             if s.get("quick_action"):
                 print(f"     {styled('→ Available in Quick Actions menu', Style.GREEN)}")
+
+        input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
+
+    def black_image_diagnostic(self):
+        """Diagnose potential causes of black/dark image output."""
+        if not self.workflow_content:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Load a workflow first.")
+            return
+
+        issues = WorkflowAnalyzer.diagnose_black_image(self.workflow_content)
+
+        print_box("🔍 Black Image Diagnostic", [
+            "Analyzing workflow for common causes of black/dark images.",
+            "These are automated checks based on workflow structure.",
+        ], Style.YELLOW, icon="")
+
+        likelihood_colors = {
+            "high": Style.RED,
+            "medium": Style.YELLOW,
+            "low": Style.CYAN,
+            "info": Style.DIM,
+        }
+
+        for issue in issues:
+            color = likelihood_colors.get(issue["likelihood"], Style.WHITE)
+            print(f"\n  {styled(f'[{issue["likelihood"].upper()}]', color, Style.BOLD)} {issue['issue']}")
+            print(f"     {styled('Why:', Style.DIM)} {issue['explanation']}")
+            print(f"     {styled('Fix:', Style.GREEN)} {issue['fix']}")
+
+        print(f"\n  {styled('─' * 60, Style.DIM)}")
+        print(f"  {styled('Still getting black images?', Style.BOLD)}")
+        print(f"  • Check the ComfyUI console for error messages")
+        print(f"  • Verify all node connections are intact")
+        print(f"  • Try a different model/checkpoint")
+        print(f"  • Use [3] Generate LLM Prompt with goal 'fix black images'")
 
         input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
 
@@ -3329,6 +3656,12 @@ class PerformanceLab:
             apply_now = input(f"  {styled('▶', Style.CYAN)} Apply now? (y/n): ").strip().lower()
             if apply_now == 'y':
                 self.apply_mod_workflow()
+
+                # Offer to auto-queue generation after applying
+                if self.workflow_content:
+                    auto_queue = input(f"  {styled('▶', Style.CYAN)} Queue workflow for testing? (y/n): ").strip().lower()
+                    if auto_queue == 'y':
+                        self.queue_workflow()
         else:
             print(f"  {styled('✗', Style.RED)} Failed to save mod")
 
@@ -3384,17 +3717,131 @@ class PerformanceLab:
 
     def export_session(self):
         """Export session to file."""
+        print_box("Export Session", [
+            "Export your optimization session as:",
+            "  1. JSON (raw data, for backup/restore)",
+            "  2. Markdown Report (human-readable summary)",
+        ], Style.CYAN, icon="📤")
+
+        choice = input(f"\n  {styled('▶', Style.CYAN)} Export format (1/2): ").strip()
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_name = f"session_{timestamp}.json"
 
-        filepath = input(f"\n  {styled('▶', Style.CYAN)} Export filename [{default_name}]: ").strip()
-        if not filepath:
-            filepath = default_name
+        if choice == '2':
+            # Markdown report
+            default_name = f"optimization_report_{timestamp}.md"
+            filepath = input(f"  {styled('▶', Style.CYAN)} Export filename [{default_name}]: ").strip()
+            if not filepath:
+                filepath = default_name
 
-        if self.session.export(filepath):
-            print(f"  {styled('✓', Style.GREEN)} Session exported to: {styled(filepath, Style.BOLD)}")
+            report = self._generate_markdown_report()
+            try:
+                with open(filepath, 'w') as f:
+                    f.write(report)
+                print(f"  {styled('✓', Style.GREEN)} Report exported to: {styled(filepath, Style.BOLD)}")
+            except Exception as e:
+                print(f"  {styled('✗', Style.RED)} Failed to export: {e}")
         else:
-            print(f"  {styled('✗', Style.RED)} Failed to export session")
+            # JSON export
+            default_name = f"session_{timestamp}.json"
+            filepath = input(f"  {styled('▶', Style.CYAN)} Export filename [{default_name}]: ").strip()
+            if not filepath:
+                filepath = default_name
+
+            if self.session.export(filepath):
+                print(f"  {styled('✓', Style.GREEN)} Session exported to: {styled(filepath, Style.BOLD)}")
+            else:
+                print(f"  {styled('✗', Style.RED)} Failed to export session")
+
+    def _generate_markdown_report(self) -> str:
+        """Generate a markdown optimization report."""
+        lines = []
+        lines.append("# ComfyUI Workflow Optimization Report")
+        lines.append(f"\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"\n## Workflow")
+        lines.append(f"- **Target:** `{self.target_workflow}`")
+        if self.user_goal:
+            lines.append(f"- **Goal:** {self.user_goal}")
+
+        # Workflow Analysis
+        if self.session.workflow_analysis:
+            analysis = self.session.workflow_analysis
+            lines.append(f"\n## Workflow Analysis")
+            lines.append(f"- **Total Nodes:** {analysis.get('total_nodes', 0)}")
+            lines.append(f"- **Total Links:** {analysis.get('total_links', 0)}")
+
+            if analysis.get("features"):
+                features = analysis["features"]
+                active = [k for k, v in features.items() if v]
+                if active:
+                    lines.append(f"- **Features:** {', '.join(f.replace('has_', '').replace('_', ' ').title() for f in active)}")
+
+            if analysis.get("resolution_hints"):
+                lines.append(f"- **Resolution:** {max(analysis['resolution_hints'])}px")
+            if analysis.get("step_counts"):
+                lines.append(f"- **Steps:** {max(analysis['step_counts'])}")
+
+        # Baseline
+        if self.session.baseline_result:
+            baseline = self.session.baseline_result
+            lines.append(f"\n## Baseline Performance")
+            if baseline.get("success"):
+                lines.append(f"- **Duration:** {baseline.get('duration_seconds', 0):.2f}s")
+                lines.append(f"- **Peak VRAM:** {baseline.get('peak_vram_gb', 0):.2f} GB")
+
+        # Optimization History
+        if self.session.entries:
+            lines.append(f"\n## Optimization History")
+            lines.append(f"\n| # | Mod | Result | Duration | Change | Status |")
+            lines.append(f"|---|-----|--------|----------|--------|--------|")
+
+            for entry in self.session.entries:
+                num = entry["iteration"]
+                name = entry["mod_name"][:20]
+                result = entry["result"]
+                status = "✅ Kept" if entry["kept"] else "❌ Reverted"
+
+                if result.get("success"):
+                    dur = f"{result.get('duration_seconds', 0):.2f}s"
+                    change = entry.get("speed_change_percent", 0)
+                    change_str = f"{change:+.1f}%" if change else "-"
+                    res = "Success"
+                elif result.get("success") is False:
+                    dur = "-"
+                    change_str = "-"
+                    res = "Failed"
+                else:
+                    dur = "-"
+                    change_str = "-"
+                    res = "Not tested"
+
+                lines.append(f"| {num} | {name} | {res} | {dur} | {change_str} | {status} |")
+
+        # Summary
+        lines.append(f"\n## Summary")
+        kept_count = sum(1 for e in self.session.entries if e["kept"])
+        total_count = len(self.session.entries)
+        lines.append(f"- **Modifications tried:** {total_count}")
+        lines.append(f"- **Modifications kept:** {kept_count}")
+
+        if self.session.baseline_result and self.session.entries:
+            baseline_dur = self.session.baseline_result.get("duration_seconds", 0)
+            # Find last kept successful result
+            for entry in reversed(self.session.entries):
+                if entry["kept"] and entry["result"].get("success"):
+                    final_dur = entry["result"].get("duration_seconds", 0)
+                    if baseline_dur > 0:
+                        improvement = ((baseline_dur - final_dur) / baseline_dur) * 100
+                        if improvement > 0:
+                            lines.append(f"- **Total improvement:** {improvement:.1f}% faster")
+                        else:
+                            lines.append(f"- **Total change:** {improvement:.1f}%")
+                    break
+
+        lines.append(f"\n---")
+        lines.append(f"*Generated by [ComfyUI Performance Lab](https://github.com/laboratoiresonore/ComfyUI_PerformanceLab)*")
+
+        return "\n".join(lines)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENTRY POINT
