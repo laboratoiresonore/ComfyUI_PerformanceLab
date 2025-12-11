@@ -20,7 +20,7 @@ import re
 from typing import Dict, Any, List, Tuple, Optional
 
 # Version
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 # Ensure the module directory is in path for imports
 MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,12 +33,19 @@ if MODULE_DIR not in sys.path:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class PerfLab_Timer:
-    """
-    ⏱️ Start Timer - Place at the START of your workflow
+    """Start Timer - Place at the START of your workflow."""
 
-    Begins tracking execution time. Connect the output to Performance Report
-    at the end of your workflow to see how long generation took.
-    """
+    DESCRIPTION = """⏱️ START TIMER
+
+HOW TO USE:
+1. Add this node at the BEGINNING of your workflow
+2. Connect the 'timer' output to a Performance Report node at the END
+3. Run your workflow - the report will show how long it took
+
+TIPS:
+• No inputs needed - just add it and connect
+• Works with any workflow
+• Pair with 📊 Performance Report to see results"""
 
     CATEGORY = "⚡ Performance Lab/Monitoring"
     FUNCTION = "start"
@@ -54,12 +61,25 @@ class PerfLab_Timer:
 
 
 class PerfLab_Report:
-    """
-    📊 Performance Report - Place at the END of your workflow
+    """Performance Report - Shows timing and VRAM results."""
 
-    Shows execution time and VRAM usage. Connect any output from your
-    workflow to trigger this at the end.
-    """
+    DESCRIPTION = """📊 PERFORMANCE REPORT
+
+HOW TO USE:
+1. Add this node at the END of your workflow
+2. Connect ANY output from your last node to 'trigger'
+3. (Optional) Connect a Timer node to 'timer' for accurate timing
+4. Run workflow - results appear in console and outputs
+
+OUTPUTS:
+• report: Text summary of performance
+• duration_sec: Time in seconds (for Compare node)
+• peak_vram_gb: Peak VRAM used (for Compare node)
+
+TIPS:
+• Connect final image/latent to 'trigger' input
+• Use with ⏱️ Start Timer for accurate timing
+• Feed outputs to 📊 Compare Results for before/after"""
 
     CATEGORY = "⚡ Performance Lab/Monitoring"
     FUNCTION = "report"
@@ -115,12 +135,25 @@ class PerfLab_Report:
 
 
 class PerfLab_VRAMMonitor:
-    """
-    💾 VRAM Monitor - Check VRAM usage at any point
+    """VRAM Monitor - Check GPU memory at any point."""
 
-    Place anywhere in your workflow to see current GPU memory usage.
-    Useful for finding which nodes use the most VRAM.
-    """
+    DESCRIPTION = """💾 VRAM MONITOR
+
+HOW TO USE:
+1. Place this node ANYWHERE in your workflow
+2. Connect any data to 'passthrough' (it passes through unchanged)
+3. Run workflow - VRAM info prints to console
+
+OUTPUTS:
+• vram_info: Text showing used/free/total VRAM
+• used_gb: VRAM currently in use
+• free_gb: Available VRAM
+• passthrough: Your input, unchanged
+
+TIPS:
+• Place between nodes to find which uses most VRAM
+• Add checkpoint_name to label the measurement
+• Passthrough lets you insert without breaking connections"""
 
     CATEGORY = "⚡ Performance Lab/Monitoring"
     FUNCTION = "check"
@@ -163,12 +196,25 @@ class PerfLab_VRAMMonitor:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class PerfLab_CapResolution:
-    """
-    📐 Cap Resolution - Limit image dimensions for faster testing
+    """Cap Resolution - Limit dimensions for faster testing."""
 
-    Reduces resolution to speed up generation during testing.
-    Lower resolution = faster generation + less VRAM.
-    """
+    DESCRIPTION = """📐 CAP RESOLUTION
+
+HOW TO USE:
+1. Connect your width/height values to this node
+2. Set 'max_size' to your target (e.g., 768)
+3. Connect outputs to Empty Latent or other nodes
+4. Toggle 'enabled' to quickly compare original vs capped
+
+INPUTS:
+• width/height: Your original dimensions
+• max_size: Maximum allowed dimension
+• enabled: Turn optimization on/off
+
+WHY USE THIS:
+• Resolution affects VRAM quadratically (2x res = 4x VRAM)
+• 768px is great for testing, use 1024+ for finals
+• Keeps aspect ratio intact"""
 
     CATEGORY = "⚡ Performance Lab/Quick Optimize"
     FUNCTION = "cap"
@@ -205,12 +251,25 @@ class PerfLab_CapResolution:
 
 
 class PerfLab_ReduceSteps:
-    """
-    🔢 Reduce Steps - Lower sampling steps for faster iteration
+    """Reduce Steps - Lower sampling steps for faster iteration."""
 
-    Fewer steps = faster generation. 15-20 steps is usually enough
-    for testing composition before doing final renders.
-    """
+    DESCRIPTION = """🔢 REDUCE STEPS
+
+HOW TO USE:
+1. Connect your steps value to this node
+2. Set 'max_steps' to your testing limit (e.g., 20)
+3. Connect output to your KSampler
+4. Toggle 'enabled' to compare fast vs quality
+
+INPUTS:
+• steps: Your original step count
+• max_steps: Maximum allowed steps
+• enabled: Turn optimization on/off
+
+WHY USE THIS:
+• Steps scale linearly with time (2x steps = 2x time)
+• 15-20 steps is enough to check composition
+• Use full steps only for final renders"""
 
     CATEGORY = "⚡ Performance Lab/Quick Optimize"
     FUNCTION = "reduce"
@@ -241,12 +300,24 @@ class PerfLab_ReduceSteps:
 
 
 class PerfLab_ReduceBatch:
-    """
-    📦 Reduce Batch Size - Generate one image at a time
+    """Reduce Batch - Force batch size to 1 for VRAM savings."""
 
-    Batch size 1 uses minimum VRAM. Great for testing workflows
-    that run out of memory.
-    """
+    DESCRIPTION = """📦 REDUCE BATCH
+
+HOW TO USE:
+1. Connect your batch_size value to this node
+2. Enable 'force_single' to always use batch=1
+3. Connect output to Empty Latent Image
+
+INPUTS:
+• batch_size: Your original batch size
+• force_single: Force to 1 when enabled
+
+WHY USE THIS:
+• Batch size multiplies VRAM usage directly
+• Batch=4 uses 4x the VRAM of batch=1
+• Essential for low VRAM GPUs
+• Disable for final batch renders"""
 
     CATEGORY = "⚡ Performance Lab/Quick Optimize"
     FUNCTION = "reduce"
@@ -273,12 +344,27 @@ class PerfLab_ReduceBatch:
 
 
 class PerfLab_OptimizeCFG:
-    """
-    🎯 Optimize CFG - Auto-adjust CFG for your model type
+    """Optimize CFG - Auto-adjust CFG for your model type."""
 
-    Different models work best with different CFG values.
-    This node suggests optimal CFG based on model type.
-    """
+    DESCRIPTION = """🎯 OPTIMIZE CFG
+
+HOW TO USE:
+1. Select your model_type from the dropdown
+2. Connect cfg output to your KSampler
+3. Enable 'auto_adjust' to use optimal values
+
+OPTIMAL CFG BY MODEL:
+• SD 1.5: 7.5
+• SDXL: 7.0
+• SD3: 4.5
+• Flux Dev: 3.5
+• Flux Schnell: 1.0
+
+WHY USE THIS:
+• Wrong CFG causes black/burned images
+• Flux needs LOW CFG (1-3.5)
+• SD models need MEDIUM CFG (5-8)
+• Select 'Custom' to use your own value"""
 
     CATEGORY = "⚡ Performance Lab/Quick Optimize"
     FUNCTION = "optimize"
@@ -316,12 +402,29 @@ class PerfLab_OptimizeCFG:
 
 
 class PerfLab_SpeedPreset:
-    """
-    🚀 Speed Test Preset - All optimizations in one node
+    """Speed Preset - All optimizations in one node."""
 
-    Applies multiple optimizations at once for maximum speed
-    during testing: lower resolution, fewer steps, batch=1.
-    """
+    DESCRIPTION = """🚀 SPEED TEST PRESET
+
+HOW TO USE:
+1. Connect your width, height, steps, cfg
+2. Connect outputs to your workflow nodes
+3. Toggle 'enabled' to switch between test/production
+
+WHAT IT DOES:
+• Caps resolution to target (default 512px)
+• Limits steps to target (default 15)
+• Keeps CFG unchanged
+
+OUTPUTS:
+• width/height: Capped dimensions
+• steps: Limited step count
+• cfg: Passed through
+
+USE WHEN:
+• Testing workflow changes quickly
+• Iterating on prompts/composition
+• Debugging errors (fast feedback)"""
 
     CATEGORY = "⚡ Performance Lab/Quick Optimize"
     FUNCTION = "apply"
@@ -362,14 +465,29 @@ class PerfLab_SpeedPreset:
 
 
 class PerfLab_LowVRAMPreset:
-    """
-    💾 8GB VRAM Preset - Optimized for low VRAM GPUs
+    """Low VRAM Preset - Optimized for 6GB/8GB/12GB GPUs."""
 
-    Applies settings optimized for 8GB VRAM cards:
-    - Lower resolution
-    - Reduced batch size
-    - Optimized for memory efficiency
-    """
+    DESCRIPTION = """💾 LOW VRAM PRESET
+
+HOW TO USE:
+1. Connect width, height, steps, batch_size
+2. Select your GPU's VRAM from dropdown
+3. Connect outputs to your workflow
+
+VRAM PRESETS:
+• 6GB: 512px max, 20 steps, batch=1
+• 8GB: 768px max, 25 steps, batch=1
+• 12GB: 1024px max, 30 steps, batch=1
+
+OUTPUTS:
+• width/height: VRAM-safe dimensions
+• steps: Reasonable step count
+• batch_size: Always 1 for safety
+
+USE WHEN:
+• Getting CUDA out of memory errors
+• Running SDXL on 8GB GPU
+• Want safe defaults for your card"""
 
     CATEGORY = "⚡ Performance Lab/Quick Optimize"
     FUNCTION = "apply"
@@ -424,14 +542,29 @@ class PerfLab_LowVRAMPreset:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class PerfLab_Analyzer:
-    """
-    🔍 Workflow Analyzer - Analyze workflow structure
+    """Workflow Analyzer - Analyze workflow and get suggestions."""
 
-    Paste workflow JSON to get detailed analysis:
-    - Node count and types
-    - Feature detection (upscaling, ControlNet, etc.)
-    - Optimization suggestions
-    """
+    DESCRIPTION = """🔍 WORKFLOW ANALYZER
+
+HOW TO USE:
+1. Export your workflow as JSON (Ctrl+S in ComfyUI)
+2. Paste the JSON into this node
+3. Read the analysis and suggestions
+
+OUTPUTS:
+• analysis: Node counts, features detected
+• suggestions: Specific optimization tips
+
+DETECTS:
+• Upscaling (ESRGAN, etc.)
+• ControlNet usage
+• Model type (SDXL, Flux, etc.)
+• Video generation nodes
+
+USE WHEN:
+• Starting optimization on a new workflow
+• Want to understand workflow complexity
+• Need suggestions for what to optimize"""
 
     CATEGORY = "⚡ Performance Lab/Analysis"
     FUNCTION = "analyze"
@@ -514,15 +647,30 @@ class PerfLab_Analyzer:
 
 
 class PerfLab_BlackImageFix:
-    """
-    🔧 Black Image Diagnostic - Troubleshoot dark/empty outputs
+    """Black Image Fix - Diagnose why you're getting dark images."""
 
-    Common causes of black images:
-    - Wrong CFG for model (Flux needs 1-3, SD needs 5-8)
-    - Missing VAE
-    - Too few steps
-    - Wrong resolution for model
-    """
+    DESCRIPTION = """🔧 BLACK IMAGE FIX
+
+HOW TO USE:
+1. Select your model type from dropdown
+2. Enter your current CFG and steps
+3. Read diagnosis and use suggested values
+
+OUTPUTS:
+• diagnosis: What might be wrong
+• suggested_cfg: Optimal CFG for your model
+• suggested_steps: Minimum recommended steps
+
+COMMON CAUSES OF BLACK IMAGES:
+• Flux with CFG > 4 (use 1-3.5)
+• SD with CFG < 3 (use 5-8)
+• Too few steps (< 15)
+• Missing/wrong VAE
+• Empty prompt
+
+FIX IT:
+Connect suggested_cfg and suggested_steps
+to your KSampler to try the fix!"""
 
     CATEGORY = "⚡ Performance Lab/Analysis"
     FUNCTION = "diagnose"
@@ -586,12 +734,28 @@ class PerfLab_BlackImageFix:
 
 
 class PerfLab_Compare:
-    """
-    📊 Compare Results - Before/After comparison
+    """Compare Results - See before/after improvement."""
 
-    Connect two performance reports to see improvement.
-    Shows duration change, VRAM change, and % improvement.
-    """
+    DESCRIPTION = """📊 COMPARE RESULTS
+
+HOW TO USE:
+1. Run workflow BEFORE optimization, note duration/VRAM
+2. Run workflow AFTER optimization
+3. Enter both values to see % improvement
+
+INPUTS:
+• before_duration: Time before optimization
+• after_duration: Time after optimization
+• before_vram: Peak VRAM before (optional)
+• after_vram: Peak VRAM after (optional)
+
+OUTPUT:
+• comparison: Table showing changes and % difference
+
+TIPS:
+• Get duration/VRAM from Performance Report node
+• Green = improvement, Red = regression
+• Use to verify optimizations actually helped"""
 
     CATEGORY = "⚡ Performance Lab/Analysis"
     FUNCTION = "compare"
@@ -655,12 +819,32 @@ class PerfLab_Compare:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class PerfLab_GeneratePrompt:
-    """
-    🤖 Generate LLM Prompt - Create prompt for Claude/GPT/Gemini
+    """Generate LLM Prompt - Get AI help from Claude/GPT/Gemini."""
 
-    Generates a detailed prompt you can paste into an LLM to get
-    optimization suggestions. The LLM will respond with workflow changes.
-    """
+    DESCRIPTION = """🤖 GENERATE LLM PROMPT
+
+HOW TO USE:
+1. Enter your optimization goal
+2. Add current performance metrics (optional)
+3. Copy the output prompt
+4. Paste into Claude, ChatGPT, or Gemini
+5. Follow the AI's suggestions!
+
+INPUTS:
+• goal: What you want to achieve
+• current_duration: From Performance Report
+• current_vram: From Performance Report
+• model_type: SD 1.5, SDXL, Flux, etc.
+• workflow_json: Paste workflow for analysis
+
+OUTPUT:
+• llm_prompt: Ready to paste into any AI
+
+EXAMPLE GOALS:
+• "Make this run under 10 seconds"
+• "Fit on 8GB VRAM"
+• "Fix why I get black images"
+• "Improve quality without slowing down\""""
 
     CATEGORY = "⚡ Performance Lab/LLM"
     FUNCTION = "generate"
@@ -735,12 +919,24 @@ class PerfLab_GeneratePrompt:
 
 
 class PerfLab_ShowText:
-    """
-    📝 Show Text - Display any text output in the node
+    """Show Text - Display any text in the node preview."""
 
-    Useful for showing analysis results, prompts, or any string
-    directly in the node preview.
-    """
+    DESCRIPTION = """📝 SHOW TEXT
+
+HOW TO USE:
+1. Connect any STRING output to this node
+2. The text appears in both the node and console
+
+USE FOR:
+• Viewing analysis results
+• Checking LLM prompts before copying
+• Debugging string outputs
+• Displaying reports
+
+TIPS:
+• Great for inspecting what's in a string
+• Connect to Performance Report output
+• Connect to Analyzer suggestions output"""
 
     CATEGORY = "⚡ Performance Lab/Utility"
     FUNCTION = "show"
@@ -762,12 +958,29 @@ class PerfLab_ShowText:
 
 
 class PerfLab_Switch:
-    """
-    🔀 A/B Switch - Compare two configurations
+    """A/B Switch - Toggle between two any-type inputs."""
 
-    Easily switch between "test" and "production" settings.
-    Great for comparing optimized vs original values.
-    """
+    DESCRIPTION = """🔀 A/B SWITCH
+
+HOW TO USE:
+1. Connect your TEST value to 'a_test'
+2. Connect your PRODUCTION value to 'b_production'
+3. Toggle 'use_b' to switch between them
+
+INPUTS:
+• a_test: Your optimized/test configuration
+• b_production: Your original/production configuration
+• use_b: Toggle (OFF = test, ON = production)
+
+USE FOR:
+• Comparing before/after settings
+• Quick test mode vs production mode toggle
+• Switching between different node chains
+• A/B testing different approaches
+
+TIPS:
+• Works with ANY type (images, latents, models, etc.)
+• Use with Int/Float Switch for typed values"""
 
     CATEGORY = "⚡ Performance Lab/Utility"
     FUNCTION = "switch"
@@ -794,11 +1007,30 @@ class PerfLab_Switch:
 
 
 class PerfLab_IntSwitch:
-    """
-    🔢 Integer A/B Switch - Switch between two integer values
+    """Integer A/B Switch - Toggle between two integer values."""
 
-    Perfect for comparing step counts, resolutions, etc.
-    """
+    DESCRIPTION = """🔢 INTEGER A/B SWITCH
+
+HOW TO USE:
+1. Enter your TEST value in 'a_test' (e.g., 15 steps)
+2. Enter your PRODUCTION value in 'b_production' (e.g., 30 steps)
+3. Toggle 'use_b' to switch between them
+
+INPUTS:
+• a_test: Test/fast integer value
+• b_production: Production/quality integer value
+• use_b: Toggle (OFF = test, ON = production)
+
+USE FOR:
+• Switching step counts (15 vs 30)
+• Switching resolutions (512 vs 1024)
+• Switching batch sizes (1 vs 4)
+• Any integer A/B comparison
+
+EXAMPLE:
+• a_test: 15 (fast testing)
+• b_production: 30 (final quality)
+• Connect output to KSampler steps"""
 
     CATEGORY = "⚡ Performance Lab/Utility"
     FUNCTION = "switch"
@@ -820,11 +1052,29 @@ class PerfLab_IntSwitch:
 
 
 class PerfLab_FloatSwitch:
-    """
-    🔢 Float A/B Switch - Switch between two float values
+    """Float A/B Switch - Toggle between two decimal values."""
 
-    Perfect for comparing CFG scales, denoise values, etc.
-    """
+    DESCRIPTION = """🔢 FLOAT A/B SWITCH
+
+HOW TO USE:
+1. Enter your TEST value in 'a_test' (e.g., 1.0 CFG)
+2. Enter your PRODUCTION value in 'b_production' (e.g., 7.0 CFG)
+3. Toggle 'use_b' to switch between them
+
+INPUTS:
+• a_test: Test float value
+• b_production: Production float value
+• use_b: Toggle (OFF = test, ON = production)
+
+USE FOR:
+• Switching CFG scale (1.0 vs 7.0)
+• Switching denoise strength (0.5 vs 1.0)
+• Any decimal A/B comparison
+
+EXAMPLE (Flux vs SD):
+• a_test: 1.0 (Flux CFG)
+• b_production: 7.0 (SD CFG)
+• Toggle based on which model you're using"""
 
     CATEGORY = "⚡ Performance Lab/Utility"
     FUNCTION = "switch"
@@ -843,6 +1093,484 @@ class PerfLab_FloatSwitch:
 
     def switch(self, a_test, b_production, use_b):
         return (b_production if use_b else a_test,)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# META-WORKFLOW NODES (Run & Test Other Workflows)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class PerfLab_LoadWorkflow:
+    """Load Workflow - Load a workflow JSON file for analysis or execution."""
+
+    DESCRIPTION = """📂 LOAD WORKFLOW
+
+HOW TO USE:
+1. Enter the path to your workflow JSON file
+2. The workflow is loaded and output as JSON string
+3. Connect to Analyzer or Queue Workflow node
+
+INPUTS:
+• file_path: Full path to your .json workflow file
+
+OUTPUTS:
+• workflow_json: The loaded workflow as JSON string
+• node_count: Number of nodes in the workflow
+• status: Success/error message
+
+USE FOR:
+• Loading workflows for analysis
+• Batch testing multiple workflows
+• Building a workflow test suite
+
+TIPS:
+• Use absolute paths for reliability
+• Workflow must be valid ComfyUI JSON
+• Connect to Queue Workflow to run it"""
+
+    CATEGORY = "⚡ Performance Lab/Meta-Workflow"
+    FUNCTION = "load"
+    RETURN_TYPES = ("STRING", "INT", "STRING")
+    RETURN_NAMES = ("workflow_json", "node_count", "status")
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "file_path": ("STRING", {
+                    "default": "",
+                    "tooltip": "Full path to workflow JSON file"
+                }),
+            }
+        }
+
+    def load(self, file_path: str):
+        if not file_path:
+            return ("", 0, "❌ No file path provided")
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            workflow = json.loads(content)
+            nodes = workflow.get("nodes", [])
+            node_count = len(nodes)
+
+            print(f"[Performance Lab] Loaded workflow: {file_path}")
+            print(f"   Nodes: {node_count}")
+
+            return (content, node_count, f"✅ Loaded {node_count} nodes")
+
+        except FileNotFoundError:
+            return ("", 0, f"❌ File not found: {file_path}")
+        except json.JSONDecodeError as e:
+            return ("", 0, f"❌ Invalid JSON: {e}")
+        except Exception as e:
+            return ("", 0, f"❌ Error: {e}")
+
+
+class PerfLab_QueueWorkflow:
+    """Queue Workflow - Send a workflow to ComfyUI for execution."""
+
+    DESCRIPTION = """▶️ QUEUE WORKFLOW
+
+HOW TO USE:
+1. Connect workflow_json from Load Workflow node
+2. Set your ComfyUI server URL (default: localhost:8188)
+3. Toggle 'execute' to True to run
+4. The workflow will be queued on ComfyUI
+
+INPUTS:
+• workflow_json: The workflow JSON to execute
+• server_url: ComfyUI server address
+• execute: Safety toggle - must be True to run
+• client_id: Optional ID for tracking
+
+OUTPUTS:
+• prompt_id: The queued prompt ID
+• status: Success/error message
+
+USE FOR:
+• Running test workflows automatically
+• Batch testing multiple workflows
+• Remote workflow execution
+• Performance benchmarking
+
+TIPS:
+• Make sure ComfyUI is running first
+• The 'execute' toggle prevents accidents
+• Works with remote ComfyUI servers too"""
+
+    CATEGORY = "⚡ Performance Lab/Meta-Workflow"
+    FUNCTION = "queue"
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("prompt_id", "status")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "workflow_json": ("STRING", {"forceInput": True}),
+                "server_url": ("STRING", {"default": "http://127.0.0.1:8188"}),
+                "execute": ("BOOLEAN", {"default": False,
+                           "tooltip": "Toggle ON to actually queue the workflow"}),
+            },
+            "optional": {
+                "client_id": ("STRING", {"default": "perflab"}),
+            }
+        }
+
+    def queue(self, workflow_json: str, server_url: str, execute: bool, client_id: str = "perflab"):
+        if not execute:
+            return ("", "⏸️ Execute is OFF - toggle to True to run")
+
+        if not workflow_json:
+            return ("", "❌ No workflow provided")
+
+        try:
+            import urllib.request
+            import urllib.error
+
+            # Parse workflow
+            workflow = json.loads(workflow_json)
+
+            # Prepare prompt payload
+            prompt_payload = {
+                "prompt": workflow,
+                "client_id": client_id
+            }
+
+            # Send to ComfyUI
+            url = f"{server_url.rstrip('/')}/prompt"
+            data = json.dumps(prompt_payload).encode('utf-8')
+
+            req = urllib.request.Request(
+                url,
+                data=data,
+                headers={"Content-Type": "application/json"}
+            )
+
+            with urllib.request.urlopen(req, timeout=10) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                prompt_id = result.get("prompt_id", "unknown")
+
+                print(f"[Performance Lab] Workflow queued!")
+                print(f"   Prompt ID: {prompt_id}")
+                print(f"   Server: {server_url}")
+
+                return (prompt_id, f"✅ Queued: {prompt_id}")
+
+        except urllib.error.URLError as e:
+            return ("", f"❌ Connection failed: {e}")
+        except json.JSONDecodeError:
+            return ("", "❌ Invalid workflow JSON")
+        except Exception as e:
+            return ("", f"❌ Error: {e}")
+
+
+class PerfLab_EndpointHealth:
+    """Endpoint Health Check - Check if a network service is running."""
+
+    DESCRIPTION = """🏥 ENDPOINT HEALTH CHECK
+
+HOW TO USE:
+1. Enter the URL of your service (e.g., http://localhost:7860)
+2. Select the service type for correct health check
+3. Run to check if it's online and responding
+
+INPUTS:
+• url: Full URL to the service
+• service_type: Type of service (ComfyUI, Automatic1111, Ollama, etc.)
+• timeout: How long to wait (seconds)
+
+OUTPUTS:
+• is_healthy: Boolean - True if service is up
+• latency_ms: Response time in milliseconds
+• status: Detailed status message
+
+SUPPORTED SERVICES:
+• ComfyUI (port 8188)
+• Automatic1111/Forge (port 7860)
+• Ollama (port 11434)
+• KoboldCpp (port 5001)
+• Custom (any HTTP endpoint)
+
+USE FOR:
+• Checking if services are online before running
+• Measuring network latency
+• Distributed workflow health monitoring"""
+
+    CATEGORY = "⚡ Performance Lab/Network"
+    FUNCTION = "check"
+    RETURN_TYPES = ("BOOLEAN", "FLOAT", "STRING")
+    RETURN_NAMES = ("is_healthy", "latency_ms", "status")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "url": ("STRING", {"default": "http://127.0.0.1:8188"}),
+                "service_type": (["ComfyUI", "Automatic1111", "Ollama", "KoboldCpp", "Whisper", "TTS", "Custom"],),
+            },
+            "optional": {
+                "timeout": ("FLOAT", {"default": 5.0, "min": 1.0, "max": 30.0}),
+            }
+        }
+
+    # Health check endpoints per service type
+    HEALTH_ENDPOINTS = {
+        "ComfyUI": "/system_stats",
+        "Automatic1111": "/sdapi/v1/options",
+        "Ollama": "/api/tags",
+        "KoboldCpp": "/api/v1/info/version",
+        "Whisper": "/",
+        "TTS": "/",
+        "Custom": "/",
+    }
+
+    def check(self, url: str, service_type: str, timeout: float = 5.0):
+        import urllib.request
+        import urllib.error
+
+        endpoint = self.HEALTH_ENDPOINTS.get(service_type, "/")
+        full_url = f"{url.rstrip('/')}{endpoint}"
+
+        start_time = time.time()
+
+        try:
+            req = urllib.request.Request(full_url, method='GET')
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                latency = (time.time() - start_time) * 1000  # ms
+                status_code = response.status
+
+                status = f"✅ {service_type} online ({status_code}) - {latency:.1f}ms"
+                print(f"[Performance Lab] {status}")
+                return (True, latency, status)
+
+        except urllib.error.HTTPError as e:
+            latency = (time.time() - start_time) * 1000
+            # Some services return errors but are still "up"
+            if e.code in [401, 403, 404, 405]:
+                status = f"⚠️ {service_type} responding ({e.code}) - {latency:.1f}ms"
+                print(f"[Performance Lab] {status}")
+                return (True, latency, status)
+            return (False, latency, f"❌ HTTP {e.code}: {e.reason}")
+
+        except urllib.error.URLError as e:
+            return (False, 0.0, f"❌ Cannot connect: {e.reason}")
+        except Exception as e:
+            return (False, 0.0, f"❌ Error: {e}")
+
+
+class PerfLab_NetworkScanner:
+    """Network Scanner - Find generative AI services on your network."""
+
+    DESCRIPTION = """🔍 NETWORK SCANNER
+
+HOW TO USE:
+1. Enter the base IP (e.g., 192.168.1) or localhost
+2. Select which services to scan for
+3. Run to discover running services
+
+INPUTS:
+• base_ip: Network prefix or 'localhost' for local only
+• scan_comfyui: Check for ComfyUI instances
+• scan_a1111: Check for Automatic1111/Forge
+• scan_ollama: Check for Ollama LLM server
+• scan_kobold: Check for KoboldCpp
+
+OUTPUTS:
+• found_services: JSON list of discovered services
+• count: Number of services found
+• report: Human-readable summary
+
+USE FOR:
+• Discovering AI services on your network
+• Building distributed pipeline configurations
+• Finding available compute resources
+
+TIPS:
+• Localhost scan is fast (checks common ports)
+• Network scan checks .1-.254 (takes longer)
+• Only scans standard ports per service"""
+
+    CATEGORY = "⚡ Performance Lab/Network"
+    FUNCTION = "scan"
+    RETURN_TYPES = ("STRING", "INT", "STRING")
+    RETURN_NAMES = ("found_services", "count", "report")
+    OUTPUT_NODE = True
+
+    # Standard ports per service
+    SERVICE_PORTS = {
+        "ComfyUI": [8188, 8189],
+        "Automatic1111": [7860, 7861],
+        "Ollama": [11434],
+        "KoboldCpp": [5001, 5000],
+    }
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "base_ip": ("STRING", {"default": "localhost"}),
+            },
+            "optional": {
+                "scan_comfyui": ("BOOLEAN", {"default": True}),
+                "scan_a1111": ("BOOLEAN", {"default": True}),
+                "scan_ollama": ("BOOLEAN", {"default": True}),
+                "scan_kobold": ("BOOLEAN", {"default": True}),
+            }
+        }
+
+    def scan(self, base_ip: str, scan_comfyui=True, scan_a1111=True,
+             scan_ollama=True, scan_kobold=True):
+        import socket
+
+        found = []
+        services_to_scan = {}
+
+        if scan_comfyui:
+            services_to_scan["ComfyUI"] = self.SERVICE_PORTS["ComfyUI"]
+        if scan_a1111:
+            services_to_scan["Automatic1111"] = self.SERVICE_PORTS["Automatic1111"]
+        if scan_ollama:
+            services_to_scan["Ollama"] = self.SERVICE_PORTS["Ollama"]
+        if scan_kobold:
+            services_to_scan["KoboldCpp"] = self.SERVICE_PORTS["KoboldCpp"]
+
+        print(f"[Performance Lab] Scanning for services on {base_ip}...")
+
+        # Determine hosts to scan
+        if base_ip.lower() in ["localhost", "127.0.0.1", "local"]:
+            hosts = ["127.0.0.1"]
+        else:
+            # Scan local subnet
+            hosts = [f"{base_ip}.{i}" for i in range(1, 255)]
+
+        for host in hosts:
+            for service_name, ports in services_to_scan.items():
+                for port in ports:
+                    try:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(0.5 if host == "127.0.0.1" else 0.2)
+                        result = sock.connect_ex((host, port))
+                        sock.close()
+
+                        if result == 0:
+                            entry = {
+                                "service": service_name,
+                                "host": host,
+                                "port": port,
+                                "url": f"http://{host}:{port}"
+                            }
+                            found.append(entry)
+                            print(f"   ✅ Found {service_name} at {host}:{port}")
+
+                    except:
+                        pass
+
+        # Build report
+        if found:
+            report_lines = ["═══ Services Found ═══", ""]
+            for svc in found:
+                report_lines.append(f"• {svc['service']}: {svc['url']}")
+            report = "\n".join(report_lines)
+        else:
+            report = "❌ No services found"
+
+        print(f"[Performance Lab] Scan complete: {len(found)} services found")
+
+        return (json.dumps(found, indent=2), len(found), report)
+
+
+class PerfLab_BenchmarkRunner:
+    """Benchmark Runner - Run a workflow multiple times and average results."""
+
+    DESCRIPTION = """🏁 BENCHMARK RUNNER
+
+HOW TO USE:
+1. Connect workflow_json from Load Workflow
+2. Set number of runs (3-5 recommended)
+3. Connect to Queue Workflow for execution
+4. View averaged performance metrics
+
+INPUTS:
+• runs: Number of times to run (1-10)
+• warmup_runs: Discard first N runs (0-3)
+• delay_between: Seconds between runs
+
+OUTPUTS:
+• avg_duration: Average time per run
+• min_duration: Fastest run
+• max_duration: Slowest run
+• report: Full benchmark report
+
+USE FOR:
+• Getting reliable performance metrics
+• Comparing workflow optimizations
+• Eliminating one-off timing variations
+
+TIPS:
+• Use 3+ runs for stable averages
+• First run is often slower (warmup)
+• Set delay to let GPU cool between runs"""
+
+    CATEGORY = "⚡ Performance Lab/Meta-Workflow"
+    FUNCTION = "benchmark"
+    RETURN_TYPES = ("FLOAT", "FLOAT", "FLOAT", "STRING")
+    RETURN_NAMES = ("avg_duration", "min_duration", "max_duration", "report")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "runs": ("INT", {"default": 3, "min": 1, "max": 10}),
+            },
+            "optional": {
+                "duration_1": ("FLOAT", {"default": 0.0}),
+                "duration_2": ("FLOAT", {"default": 0.0}),
+                "duration_3": ("FLOAT", {"default": 0.0}),
+                "duration_4": ("FLOAT", {"default": 0.0}),
+                "duration_5": ("FLOAT", {"default": 0.0}),
+                "warmup_runs": ("INT", {"default": 1, "min": 0, "max": 3}),
+                "label": ("STRING", {"default": "Benchmark"}),
+            }
+        }
+
+    def benchmark(self, runs, duration_1=0.0, duration_2=0.0, duration_3=0.0,
+                  duration_4=0.0, duration_5=0.0, warmup_runs=1, label="Benchmark"):
+        # Collect all non-zero durations
+        all_durations = [d for d in [duration_1, duration_2, duration_3, duration_4, duration_5] if d > 0]
+
+        if not all_durations:
+            return (0.0, 0.0, 0.0, "❌ No duration data - connect Performance Report outputs")
+
+        # Skip warmup runs
+        if warmup_runs > 0 and len(all_durations) > warmup_runs:
+            durations = all_durations[warmup_runs:]
+        else:
+            durations = all_durations
+
+        avg_dur = sum(durations) / len(durations)
+        min_dur = min(durations)
+        max_dur = max(durations)
+        variance = max_dur - min_dur
+
+        report = f"""═══ {label} Results ═══
+
+📊 Runs analyzed: {len(durations)} (after {warmup_runs} warmup)
+⏱️  Average: {avg_dur:.2f}s
+🚀 Fastest: {min_dur:.2f}s
+🐢 Slowest: {max_dur:.2f}s
+📏 Variance: {variance:.2f}s ({(variance/avg_dur*100):.1f}%)
+
+Raw times: {', '.join(f'{d:.2f}s' for d in all_durations)}"""
+
+        print(f"\n[Performance Lab]\n{report}\n")
+
+        return (avg_dur, min_dur, max_dur, report)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -876,6 +1604,15 @@ NODE_CLASS_MAPPINGS = {
     "PerfLab_Switch": PerfLab_Switch,
     "PerfLab_IntSwitch": PerfLab_IntSwitch,
     "PerfLab_FloatSwitch": PerfLab_FloatSwitch,
+
+    # Meta-Workflow (test other workflows)
+    "PerfLab_LoadWorkflow": PerfLab_LoadWorkflow,
+    "PerfLab_QueueWorkflow": PerfLab_QueueWorkflow,
+    "PerfLab_BenchmarkRunner": PerfLab_BenchmarkRunner,
+
+    # Network (distributed services)
+    "PerfLab_EndpointHealth": PerfLab_EndpointHealth,
+    "PerfLab_NetworkScanner": PerfLab_NetworkScanner,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -905,6 +1642,15 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PerfLab_Switch": "🔀 A/B Switch",
     "PerfLab_IntSwitch": "🔢 Int A/B Switch",
     "PerfLab_FloatSwitch": "🔢 Float A/B Switch",
+
+    # Meta-Workflow
+    "PerfLab_LoadWorkflow": "📂 Load Workflow",
+    "PerfLab_QueueWorkflow": "▶️ Queue Workflow",
+    "PerfLab_BenchmarkRunner": "🏁 Benchmark Runner",
+
+    # Network
+    "PerfLab_EndpointHealth": "🏥 Endpoint Health",
+    "PerfLab_NetworkScanner": "🔍 Network Scanner",
 }
 
 # Print startup message
@@ -919,5 +1665,7 @@ print(f"""
 ║  🔍 Analysis:      Analyzer, Black Image Fix, Compare        ║
 ║  🤖 LLM:           Generate Prompt                           ║
 ║  🔧 Utility:       Show Text, A/B Switches                   ║
+║  📂 Meta-Workflow: Load, Queue, Benchmark                    ║
+║  🌐 Network:       Health Check, Scanner                     ║
 ╚══════════════════════════════════════════════════════════════╝
 """)

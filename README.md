@@ -2,11 +2,11 @@
 
 **Make any ComfyUI workflow faster, use less VRAM, or produce better quality - with help from AI.**
 
-![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.4.2-orange)
+![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.6.0-orange)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                   ⚡ COMFYUI PERFORMANCE LAB v0.4.2 ⚡                        ║
+║                   ⚡ COMFYUI PERFORMANCE LAB v0.6.0 ⚡                        ║
 ║           Load → Test → Get AI Suggestions → Accept/Reject → Repeat          ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -46,7 +46,8 @@ If you have [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) insta
 4. Click **OK** and restart ComfyUI
 
 **After restart, you'll see:**
-- 5 new nodes in the **"Performance Lab"** category
+
+- 22 new nodes in the **"⚡ Performance Lab"** category
 - A startup message in the console confirming installation
 
 **To use the full CLI:**
@@ -233,27 +234,88 @@ The `ComfyUI_NetworkServices` custom node pack includes:
 
 ---
 
-## ComfyUI Nodes (v0.4.2)
+## ComfyUI Nodes (v0.6.0)
 
-After installation, find these nodes in the **"Performance Lab"** category:
+After installation, find **22 nodes** in the **"⚡ Performance Lab"** category. Every node has a **?** tooltip explaining exactly how to use it.
+
+### Monitoring Nodes
 
 | Node | What It Does |
 |------|-------------|
-| **Performance Timer** | Place at start of workflow to begin timing |
-| **Performance Monitor** | Place at end to see duration and report |
-| **Workflow Analyzer** | Paste workflow JSON to get instant analysis |
-| **Show Metrics** | Display current VRAM, GPU info |
-| **Launch Performance Lab** | Open the full CLI in a terminal |
+| **⏱️ Start Timer** | Place at START of workflow to begin timing |
+| **📊 Performance Report** | Place at END to see duration, VRAM, and report |
+| **💾 VRAM Monitor** | Check GPU memory at any point (passthrough) |
+
+### Quick Optimize Nodes
+
+| Node | What It Does |
+|------|-------------|
+| **📐 Cap Resolution** | Limit dimensions for faster testing |
+| **🔢 Reduce Steps** | Lower sampling steps (15-20 for testing) |
+| **📦 Reduce Batch** | Force batch size to 1 for VRAM savings |
+| **🎯 Optimize CFG** | Auto-adjust CFG for your model type |
+| **🚀 Speed Test Preset** | All optimizations in one node |
+| **💾 Low VRAM Preset** | Optimized for 6GB/8GB/12GB GPUs |
+
+### Analysis Nodes
+
+| Node | What It Does |
+|------|-------------|
+| **🔍 Workflow Analyzer** | Analyze workflow and get suggestions |
+| **🔧 Black Image Fix** | Diagnose why you're getting dark images |
+| **📊 Compare Results** | See before/after % improvement |
+
+### LLM Integration
+
+| Node | What It Does |
+|------|-------------|
+| **🤖 Generate LLM Prompt** | Create prompts for Claude/GPT/Gemini |
+
+### Utility Nodes
+
+| Node | What It Does |
+|------|-------------|
+| **📝 Show Text** | Display any text output in node |
+| **🔀 A/B Switch** | Toggle between two any-type inputs |
+| **🔢 Int A/B Switch** | Toggle between two integers |
+| **🔢 Float A/B Switch** | Toggle between two floats |
+
+### Meta-Workflow Nodes (NEW in v0.6.0)
+
+Use these to **test and analyze other workflows** without leaving ComfyUI:
+
+| Node | What It Does |
+|------|-------------|
+| **📂 Load Workflow** | Load a workflow JSON file for analysis |
+| **▶️ Queue Workflow** | Send a workflow to ComfyUI for execution |
+| **🏁 Benchmark Runner** | Run multiple times and average results |
+
+### Network Nodes (NEW in v0.6.0)
+
+Discover and monitor AI services on your network:
+
+| Node | What It Does |
+|------|-------------|
+| **🏥 Endpoint Health** | Check if a network service is running |
+| **🔍 Network Scanner** | Find ComfyUI, Ollama, A1111, etc. on your network |
 
 ### Example: Track Execution Time
 
 ```
-[Performance Timer] → [Your Workflow...] → [Performance Monitor]
+[⏱️ Start Timer] → [Your Workflow...] → [📊 Performance Report]
         ↓                                          ↓
-   start_time ────────────────────────────→  (shows duration)
+     timer ─────────────────────────────────→  (shows duration)
 ```
 
-The monitor node will print execution time to the console and output it as a string.
+### Example: Test Another Workflow
+
+```
+[📂 Load Workflow] ─→ [🔍 Workflow Analyzer] ─→ [📝 Show Text]
+        │
+        └─→ [▶️ Queue Workflow] ─→ [📝 Show Text (status)]
+```
+
+An example meta-workflow is included in `examples/test_workflow_runner.json`.
 
 ---
 
@@ -326,7 +388,8 @@ def apply(content):
 
 ```
 ComfyUI_PerformanceLab/
-├── performance_lab.py       # Main application
+├── __init__.py              # 22 ComfyUI nodes (main integration)
+├── performance_lab.py       # CLI application
 ├── llm_enhancer.py          # AI context generation
 ├── model_tuner.py           # Model detection & tuning
 ├── workflow_utils.py        # Workflow analysis
@@ -338,7 +401,9 @@ ComfyUI_PerformanceLab/
 │   ├── vram_optimizer.py
 │   ├── bypass_upscalers.py
 │   └── ...
-├── custom_nodes/            # ComfyUI network nodes
+├── examples/                # Example workflows
+│   └── test_workflow_runner.json
+├── custom_nodes/            # Additional node packs
 │   └── ComfyUI_NetworkServices/
 └── tests/                   # Test suite
 ```
@@ -347,7 +412,18 @@ ComfyUI_PerformanceLab/
 
 ## Version History
 
+**v0.6.0** - Full Node Integration & Meta-Workflows
+
+- 22 ComfyUI nodes with comprehensive DESCRIPTION tooltips (? button)
+- Meta-Workflow nodes: Load, Queue, and Benchmark other workflows
+- Network nodes: Endpoint Health Check, Network Scanner
+- All capabilities now accessible directly in ComfyUI (no CLI needed)
+- Quick Optimize nodes: Cap Resolution, Reduce Steps/Batch, CFG, Presets
+- A/B Switch nodes for easy testing vs production toggle
+- Example meta-workflow included
+
 **v0.4.2** - ComfyUI Native Integration
+
 - Native ComfyUI nodes in "Performance Lab" category
 - Performance Timer & Monitor nodes for tracking execution time
 - Workflow Analyzer node for instant analysis

@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 *.json
 !mods/*.py
+!examples/*.json
 
 # Markdown files (keep README visible on GitHub)
 *.md
