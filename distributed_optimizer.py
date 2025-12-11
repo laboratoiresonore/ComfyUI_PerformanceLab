@@ -13,14 +13,82 @@ This module:
 """
 
 import json
+import logging
 import time
 import socket
 import requests
+import requests.adapters
 import concurrent.futures
 from dataclasses import dataclass, field, asdict
 from typing import Dict, Any, List, Optional, Tuple, Set
+from urllib.parse import urlparse
 from enum import Enum
 from pathlib import Path
+
+# Setup module logger
+logger = logging.getLogger("performance_lab.distributed")
+
+
+# Configurable timeouts per service type
+SERVICE_TIMEOUTS = {
+    "llm": 120,
+    "image_generation": 300,
+    "video_generation": 600,
+    "speech_to_text": 60,
+    "text_to_speech": 60,
+    "embeddings": 30,
+    "health_check": 10,
+    "default": 30,
+}
+
+
+def validate_endpoint(endpoint: str) -> Tuple[bool, str]:
+    """
+    Validate an endpoint URL.
+
+    Args:
+        endpoint: URL to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not endpoint:
+        return False, "Endpoint cannot be empty"
+
+    try:
+        parsed = urlparse(endpoint)
+
+        if parsed.scheme not in ('http', 'https'):
+            return False, f"Invalid scheme '{parsed.scheme}'. Must be http or https"
+
+        if not parsed.netloc:
+            return False, "Missing host in endpoint URL"
+
+        # Check for valid port if specified
+        if parsed.port is not None and not (1 <= parsed.port <= 65535):
+            return False, f"Invalid port number: {parsed.port}"
+
+        return True, ""
+    except Exception as e:
+        return False, f"Invalid URL format: {e}"
+
+
+def get_timeout_for_service(service_type: str) -> int:
+    """Get appropriate timeout for a service type."""
+    # Map service categories to timeout keys
+    category_map = {
+        "llm": "llm",
+        "image_generation": "image_generation",
+        "video_generation": "video_generation",
+        "speech_to_text": "speech_to_text",
+        "text_to_speech": "text_to_speech",
+        "embeddings": "embeddings",
+        "stt": "speech_to_text",
+        "tts": "text_to_speech",
+    }
+
+    timeout_key = category_map.get(service_type, "default")
+    return SERVICE_TIMEOUTS.get(timeout_key, SERVICE_TIMEOUTS["default"])
 
 
 class ServiceCategory(Enum):
@@ -109,6 +177,15 @@ class DistributedWorkflowAnalyzer:
     def __init__(self, timeout: int = 10):
         self.timeout = timeout
         self.machines: Dict[str, MachineProfile] = {}
+        # Use session for connection pooling
+        self._session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=10,
+            pool_maxsize=20,
+            max_retries=requests.adapters.Retry(total=2, backoff_factor=0.1)
+        )
+        self._session.mount('http://', adapter)
+        self._session.mount('https://', adapter)
 
     def detect_network_nodes(self, workflow: Dict) -> List[NetworkNodeInfo]:
         """Find all network service nodes in a workflow."""
@@ -276,6 +353,12 @@ class DistributedWorkflowAnalyzer:
 
     def check_endpoint_health(self, endpoint: str, service_type: str = "comfyui") -> Tuple[bool, float]:
         """Check if an endpoint is healthy and measure latency."""
+        # Validate endpoint first
+        is_valid, error_msg = validate_endpoint(endpoint)
+        if not is_valid:
+            logger.warning(f"Invalid endpoint '{endpoint}': {error_msg}")
+            return (False, -1.0)
+
         endpoint = endpoint.rstrip('/')
 
         # Health check paths per service type
@@ -289,13 +372,21 @@ class DistributedWorkflowAnalyzer:
 
         path = health_paths.get(service_type, "/")
         url = f"{endpoint}{path}"
+        timeout = get_timeout_for_service("health_check")
 
         try:
             start = time.time()
-            response = requests.get(url, timeout=self.timeout)
+            response = self._session.get(url, timeout=timeout)
             latency = (time.time() - start) * 1000
             return (response.status_code == 200, latency)
-        except:
+        except requests.exceptions.Timeout:
+            logger.debug(f"Timeout checking endpoint: {endpoint}")
+            return (False, -1.0)
+        except requests.exceptions.ConnectionError as e:
+            logger.debug(f"Connection error for {endpoint}: {e}")
+            return (False, -1.0)
+        except Exception as e:
+            logger.warning(f"Unexpected error checking endpoint {endpoint}: {e}")
             return (False, -1.0)
 
     def check_all_endpoints(self, workflow: Dict) -> Dict[str, Dict[str, Any]]:

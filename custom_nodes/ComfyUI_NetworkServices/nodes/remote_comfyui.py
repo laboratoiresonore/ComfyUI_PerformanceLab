@@ -6,6 +6,7 @@ Supports SD, SDXL, Flux, video generation, and any other ComfyUI workflow.
 """
 
 import json
+import logging
 import time
 import uuid
 import base64
@@ -14,6 +15,9 @@ import io
 from typing import Dict, Any, Tuple, Optional, List, Union
 from PIL import Image
 import numpy as np
+
+# Setup module logger
+logger = logging.getLogger("performance_lab.nodes.remote_comfyui")
 
 
 class RemoteComfyUI:
@@ -319,8 +323,13 @@ class RemoteComfyUI:
             response = requests.get(f"{endpoint}/system_stats", timeout=10)
             if response.status_code == 200:
                 return response.json()
-        except:
-            pass
+            logger.debug(f"System stats returned status {response.status_code}")
+        except requests.exceptions.Timeout:
+            logger.debug(f"Timeout getting system stats from {endpoint}")
+        except requests.exceptions.ConnectionError as e:
+            logger.debug(f"Connection error getting system stats: {e}")
+        except Exception as e:
+            logger.warning(f"Error getting system stats from {endpoint}: {e}")
         return None
 
     def _queue_workflow(self, endpoint: str, workflow: Dict, client_id: str) -> str:
@@ -335,8 +344,9 @@ class RemoteComfyUI:
             error_detail = ""
             try:
                 error_detail = response.json()
-            except:
-                pass
+            except (json.JSONDecodeError, ValueError):
+                error_detail = response.text[:500] if response.text else ""
+            logger.error(f"HTTP error queuing workflow: {e}")
             raise RuntimeError(f"Failed to queue workflow: {e}\n{error_detail}")
         except Exception as e:
             raise RuntimeError(f"Failed to queue workflow: {e}")
@@ -364,8 +374,12 @@ class RemoteComfyUI:
                         outputs = history[prompt_id].get("outputs", {})
                         if output_node_id in outputs:
                             return outputs[output_node_id]
-            except:
-                pass
+            except requests.exceptions.Timeout:
+                logger.debug(f"Timeout polling history, retrying...")
+            except requests.exceptions.ConnectionError as e:
+                logger.debug(f"Connection error polling history: {e}")
+            except Exception as e:
+                logger.warning(f"Error polling workflow history: {e}")
 
             time.sleep(poll_interval)
 
@@ -581,8 +595,13 @@ def get_remote_system_stats(endpoint: str, timeout: int = 10) -> Optional[Dict[s
         response = requests.get(f"{endpoint}/system_stats", timeout=timeout)
         if response.status_code == 200:
             return response.json()
-    except:
-        pass
+        logger.debug(f"Remote system stats returned status {response.status_code}")
+    except requests.exceptions.Timeout:
+        logger.debug(f"Timeout getting system stats from {endpoint}")
+    except requests.exceptions.ConnectionError as e:
+        logger.debug(f"Connection error getting system stats: {e}")
+    except Exception as e:
+        logger.warning(f"Error getting remote system stats: {e}")
     return None
 
 
@@ -592,8 +611,13 @@ def get_remote_queue_status(endpoint: str, timeout: int = 10) -> Optional[Dict[s
         response = requests.get(f"{endpoint}/queue", timeout=timeout)
         if response.status_code == 200:
             return response.json()
-    except:
-        pass
+        logger.debug(f"Remote queue status returned status {response.status_code}")
+    except requests.exceptions.Timeout:
+        logger.debug(f"Timeout getting queue status from {endpoint}")
+    except requests.exceptions.ConnectionError as e:
+        logger.debug(f"Connection error getting queue status: {e}")
+    except Exception as e:
+        logger.warning(f"Error getting remote queue status: {e}")
     return None
 
 
@@ -603,6 +627,11 @@ def get_remote_object_info(endpoint: str, timeout: int = 30) -> Optional[Dict[st
         response = requests.get(f"{endpoint}/object_info", timeout=timeout)
         if response.status_code == 200:
             return response.json()
-    except:
-        pass
+        logger.debug(f"Remote object info returned status {response.status_code}")
+    except requests.exceptions.Timeout:
+        logger.debug(f"Timeout getting object info from {endpoint}")
+    except requests.exceptions.ConnectionError as e:
+        logger.debug(f"Connection error getting object info: {e}")
+    except Exception as e:
+        logger.warning(f"Error getting remote object info: {e}")
     return None

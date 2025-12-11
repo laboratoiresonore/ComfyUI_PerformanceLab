@@ -6,12 +6,16 @@ for multi-machine AI pipelines.
 """
 
 import json
+import logging
 import time
 import socket
 import requests
 import concurrent.futures
 from typing import Dict, Any, Tuple, Optional, List
 from .network_api import SERVICE_DESCRIPTIONS
+
+# Setup module logger
+logger = logging.getLogger("performance_lab.nodes.health_check")
 
 
 class EndpointHealthCheck:
@@ -131,7 +135,8 @@ class EndpointHealthCheck:
             if get_system_info:
                 try:
                     system_info = json.dumps(response.json(), indent=2)
-                except:
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.debug(f"Could not parse system info as JSON: {e}")
                     system_info = "{}"
 
         except requests.exceptions.Timeout:
@@ -144,13 +149,17 @@ class EndpointHealthCheck:
         # 2. Measure latency with multiple samples
         if is_healthy and measure_latency:
             latencies = []
-            for _ in range(latency_samples):
+            for sample_num in range(latency_samples):
                 try:
                     start = time.time()
                     requests.get(check_url, timeout=timeout)
                     latencies.append((time.time() - start) * 1000)
-                except:
-                    pass
+                except requests.exceptions.Timeout:
+                    logger.debug(f"Latency sample {sample_num} timed out")
+                except requests.exceptions.ConnectionError as e:
+                    logger.debug(f"Latency sample {sample_num} connection error: {e}")
+                except Exception as e:
+                    logger.debug(f"Latency sample {sample_num} failed: {e}")
 
             if latencies:
                 latency_ms = sum(latencies) / len(latencies)
@@ -218,8 +227,12 @@ class EndpointHealthCheck:
                 if models.status_code == 200:
                     info["models"] = models.json()
 
-        except:
-            pass
+        except requests.exceptions.Timeout:
+            logger.debug(f"Timeout getting service-specific info from {endpoint}")
+        except requests.exceptions.ConnectionError as e:
+            logger.debug(f"Connection error getting service info: {e}")
+        except Exception as e:
+            logger.warning(f"Error getting service-specific info from {endpoint}: {e}")
 
         return info if info else None
 
@@ -396,5 +409,15 @@ def ping_host(host: str, port: int = None, timeout: float = 5.0) -> Tuple[bool, 
         sock.close()
 
         return (result == 0, latency if result == 0 else -1)
-    except:
+    except socket.timeout:
+        logger.debug(f"Socket timeout connecting to {host}:{port}")
+        return (False, -1)
+    except socket.gaierror as e:
+        logger.debug(f"DNS resolution failed for {host}: {e}")
+        return (False, -1)
+    except OSError as e:
+        logger.debug(f"OS error connecting to {host}:{port}: {e}")
+        return (False, -1)
+    except Exception as e:
+        logger.warning(f"Unexpected error pinging {host}:{port}: {e}")
         return (False, -1)

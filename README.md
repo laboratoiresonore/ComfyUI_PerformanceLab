@@ -1,643 +1,346 @@
 # ComfyUI Performance Lab
 
-> **One-Line Install** (ComfyUI Manager with security set to "weak"):
-> ```
-> https://github.com/laboratoiresonore/ComfyUI_PerformanceLab
-> ```
-> Paste this URL in ComfyUI Manager → Install via Git URL
-
----
-
-**Iterative Workflow Optimization with Smart Model Detection & One-Click Tuning**
-
-```text
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                    ⚡ COMFYUI PERFORMANCE LAB ⚡                              ║
-║       Auto-Detect Models • Smart Optimization • LoRA Tuning • More!         ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-```
+**Make any ComfyUI workflow faster, use less VRAM, or produce better quality - with help from AI.**
 
 ![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.4.0-orange)
 
-## What's New in v0.4 - Multi-Machine Distributed Optimization
-
-| Feature | Description |
-|---------|-------------|
-| 🌐 **Distributed Menu** | New [D] menu for multi-machine AI pipeline optimization |
-| 🔌 **Network Service Nodes** | ComfyUI_NetworkServices node pack with 70+ service presets |
-| 🦙 **KoboldLLM Node** | Connect to Kobold instances for LLM on remote machines |
-| 🖼️ **RemoteComfyUI Node** | Execute SD/Flux/video workflows on remote ComfyUI servers |
-| 🎛️ **LocalGenerator Node** | Universal REST API node for any AI service (STT, TTS, Embeddings, etc.) |
-| 💓 **Health Check Nodes** | Monitor endpoint availability and measure latencies |
-| 🗺️ **Machine Profiles** | Register GPU/CPU specs for each machine in your network |
-| 📊 **Bottleneck Detection** | Identify which machine is slowing your pipeline |
-| ⚡ **Parallel Analysis** | Find nodes that can run simultaneously |
-| 🤖 **Distributed LLM Prompts** | Generate prompts that include machine specs for better recommendations |
-
-### Supported Services (70+ presets)
-
-**Image/Video**: ComfyUI, Automatic1111, Forge, InvokeAI, Fooocus, SwarmUI, Kohya, AnimateDiff, SVD, Mochi, CogVideo, Hunyuan, LTX-Video
-
-**LLM**: KoboldCpp, Ollama, llama.cpp, Text-Gen-WebUI, vLLM, LMDeploy, TGI, LocalAI, Jan, LM Studio, GPT4All, ExLlama, TabbyAPI, Aphrodite
-
-**STT**: Whisper, Faster-Whisper, whisper.cpp, WhisperX, NeMo ASR, Vosk
-
-**TTS**: Coqui TTS, XTTS, AllTalk, Silero, Piper, Bark, Tortoise, StyleTTS2, OpenVoice, Fish Speech
-
-**Embeddings**: Text Embeddings Inference, Sentence Transformers, Infinity, FastEmbed
-
-**And more**: LLaVA, CogVLM, Moondream, AudioCraft, MusicGen, Real-ESRGAN, GFPGAN, SAM, Florence-2...
-
-### Previous Features (v0.3) - LLM Enhancement
-
-| Feature | Description |
-|---------|-------------|
-| 🤖 **LLM Enhancer** | Advanced AI context generation for better LLM assistance |
-| 📋 **Node Catalog Export** | Query installed ComfyUI nodes to include in prompts |
-| 💻 **System Specs** | Include GPU/VRAM/CPU info for context-aware optimization |
-| 🎯 **Goal-Based Prompts** | Templates for Debug, Speed, Quality, VRAM, Explain |
-| ✅ **Mod Validation** | Validate LLM-generated workflow mods before applying |
-| 📜 **Conversation Memory** | Remember context across optimization sessions |
-| 📚 **Knowledge Base** | Common issues and solutions library |
-| 🗺️ **Workflow Graph** | ASCII/Mermaid visualization of workflow structure |
-| 📝 **Error History** | Track and export errors for debugging |
-
-### Previous Features (v0.2)
-
-| Feature | Description |
-|---------|-------------|
-| 🎛️ **Model Tuner** | Auto-detect SD1.5, SDXL, Flux, SD3 and apply optimal settings |
-| 🔍 **Smart Model Detection** | Automatically identifies model type from workflow |
-| 📊 **Model-Specific Presets** | Optimal settings for each model type |
-| 🎨 **LoRA Strength Tuning** | Recommendations and A/B testing for LoRA values |
-| 🎯 **Sampler Recommendations** | Best samplers/schedulers per model and use case |
-| 📦 **One-Step Installer** | `python install.py` - works anywhere |
-
-### Previous Features (v0.1)
-
-| Feature | Description |
-|---------|-------------|
-| ⚡ **Quick Actions** | One-key optimizations (bypass upscalers, cap resolution, etc.) |
-| 📊 **Benchmark Mode** | Multiple runs for reliable metrics with statistics |
-| 🧠 **Smart Suggestions** | AI-free workflow analysis & recommendations |
-| ⚙️ **Presets System** | 8GB VRAM, Speed Test, Quality presets |
-| 📈 **Progress Dashboard** | Visual history of all optimizations |
-| 🔄 **Workflow Diff** | See exactly what changed |
-| 📋 **Multi-Platform Clipboard** | Windows, macOS, Linux support |
-| 💾 **Config Persistence** | Save settings between sessions |
-| 🔧 **Built-in Mods** | Common optimizations included |
-
-## Overview
-
-Performance Lab creates an **iterative optimization cycle** with minimal file clutter:
-
-### The Workflow
-
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│  1. LOAD      Load any ComfyUI workflow                                │
-│  2. COLLECT   Run Performance Lab data collection (benchmark baseline)  │
-│  3. GENERATE  Generate LLM prompt with workflow + metrics              │
-│  4. SUBMIT    Copy-paste prompt to Claude/Gemini/GPT-4                 │
-│  5. RECEIVE   Get formatted mod code from LLM                          │
-│  6. PASTE     Paste mod directly into Performance Lab                  │
-│  7. TEST      Run optimized workflow in ComfyUI (auto-monitors)        │
-│  8. REVIEW    See metrics: timing, VRAM, errors, comparison            │
-│  9. DECIDE    Accept (overwrites original) or Reject (discards)        │
-│  10. REPEAT   Continue until fully optimized                           │
-└─────────────────────────────────────────────────────────────────────────┘
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    ⚡ COMFYUI PERFORMANCE LAB v0.4 ⚡                         ║
+║           Load → Test → Get AI Suggestions → Accept/Reject → Repeat          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-### Key Principles
+---
 
-- **Minimal file clutter**: Accept overwrites the original, Reject discards changes
-- **Smart protection**: Never overwrites incompatible configs (e.g., SD → Flux)
-- **Model detection**: Auto-detects when model family changes
-- **Use "Save As" only when needed**: Explicit saves for version branching
+## What Does It Do?
 
-### Safety Features
+Performance Lab helps you optimize ANY ComfyUI workflow - from a simple SD generator to a complex multi-machine network of AI services. It creates a **simple loop**:
 
-- **Fingerprint detection**: Tracks model family, resolution, features
-- **Incompatible overwrite protection**: Blocks SD1.5 → SDXL → Flux overwrites
-- **Warnings**: Alerts for significant changes before applying
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  1. LOAD      Load any ComfyUI workflow                                     │
+│  2. TEST      Run it and collect performance metrics (time, VRAM)           │
+│  3. ASK AI    Generate a prompt and paste it to Claude/GPT/Gemini           │
+│  4. GET MOD   Copy the AI's suggested improvement                           │
+│  5. PASTE     Paste the mod into Performance Lab                            │
+│  6. TEST      Run the modified workflow                                     │
+│  7. DECIDE    Better? Accept. Worse? Reject.                                │
+│  8. REPEAT    Keep optimizing until you're happy!                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**That's it.** Performance Lab handles all the complexity - you just copy-paste between it and your favorite LLM.
+
+---
 
 ## Installation
 
-### One-Step Install (Recommended)
+### Method 1: ComfyUI Manager (Easiest)
 
+If you have [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) installed:
+
+1. Open ComfyUI in your browser
+2. Click **Manager** → **Install via Git URL**
+3. Paste: `https://github.com/laboratoiresonore/ComfyUI_PerformanceLab`
+4. Click **OK** and restart ComfyUI
+
+Then run Performance Lab from your terminal:
 ```bash
-# Clone the repo
-git clone https://github.com/laboratoiresonore/ComfyUI_PerformanceLab.git
-cd ComfyUI_PerformanceLab
-
-# Run the installer
-python install.py
-```
-
-The installer will:
-- Auto-detect your ComfyUI installation
-- Set up all necessary files
-- Create a launcher script
-- Offer to run Performance Lab immediately
-
-### Manual Install
-
-```bash
-# Clone or copy the files to your ComfyUI directory
-cd /path/to/ComfyUI
-git clone https://github.com/laboratoiresonore/ComfyUI_PerformanceLab.git Workflowmods
-
-# Run directly
-python Workflowmods/performance_lab.py
-```
-
-No dependencies required! Uses only Python standard library.
-
-## Directory Structure
-
-```
-ComfyUI_PerformanceLab/
-├── performance_lab.py              # Main application (v0.3)
-├── llm_enhancer.py                 # LLM context generation & validation
-├── model_tuner.py                  # Model detection & optimization
-├── workflow_utils.py               # Fingerprinting & beautification
-├── install.py                      # One-step installer
-├── knowledge_base.json             # Common issues & solutions (auto-generated)
-├── mods/                           # Your mod collection
-│   ├── vram_optimizer.py           # Reduce VRAM usage
-│   ├── bypass_upscalers.py         # Skip upscaling
-│   ├── mute_group.py               # Mute node groups
-│   └── unwrap_list.py              # Unwrap list nodes
-├── performance_lab_config.json     # Auto-saved configuration
-└── README.md
-```
-
-## Quick Start
-
-```bash
+cd ComfyUI/custom_nodes/ComfyUI_PerformanceLab
 python performance_lab.py
 ```
 
-1. Enter your workflow JSON path when prompted
-2. Use **⚡ Quick Actions [2]** for instant optimizations
-3. Or use **🧠 Smart Suggestions [5]** for analysis
-4. Run **📊 Benchmark Mode [6]** for reliable baselines
-5. Generate LLM prompts with **[3]** for deeper optimization
+### Method 2: Git Clone (Recommended)
+
+Open a terminal in your ComfyUI folder:
+
+```bash
+# Navigate to your ComfyUI installation
+cd /path/to/ComfyUI
+
+# Clone Performance Lab
+git clone https://github.com/laboratoiresonore/ComfyUI_PerformanceLab.git custom_nodes/ComfyUI_PerformanceLab
+
+# Run the installer (sets everything up)
+cd custom_nodes/ComfyUI_PerformanceLab
+python install.py
+
+# Start Performance Lab
+python performance_lab.py
+```
+
+### Method 3: Download ZIP
+
+1. Download from GitHub: **Code → Download ZIP**
+2. Extract to `ComfyUI/custom_nodes/ComfyUI_PerformanceLab/`
+3. Open terminal in that folder and run: `python performance_lab.py`
+
+**No additional dependencies required!** Works with Python's standard library.
+
+---
+
+## Quick Start (5 Minutes)
+
+1. **Start ComfyUI** (must be running for metrics collection)
+
+2. **Run Performance Lab**:
+   ```bash
+   python performance_lab.py
+   ```
+
+3. **Load your workflow** when prompted (enter the path to your `.json` file)
+
+4. **Try Quick Actions [2]** - Instant one-click optimizations:
+   - Cap resolution to 768px (~60% faster testing)
+   - Bypass upscalers (saves 2-4GB VRAM)
+   - Speed Test preset (all optimizations at once)
+
+5. **Get AI Help [3]** - Generate a prompt, paste it to Claude/ChatGPT/Gemini, copy the response back
+
+6. **Accept or Reject** - If it's better, keep it. If not, discard it.
+
+---
 
 ## Main Menu
 
-| Key | Action | Description |
-|-----|--------|-------------|
-| **1** | Apply a Mod | Select and apply a mod from `mods/` |
-| **2** | ⚡ Quick Actions | One-key optimizations |
-| **3** | Generate LLM Prompt | Create prompt for Claude/GPT/Gemini |
-| **4** | Paste New Mod | Add mod code from LLM response |
-| **5** | 🧠 Smart Suggestions | AI-free workflow analysis |
-| **6** | 📊 Benchmark Mode | Run multiple times for metrics |
-| **7** | 📈 View Dashboard | Session history & trends |
-| **8** | ⚙️ Presets | Apply optimization presets |
-| **9** | Set Goal | Tell LLMs what you're optimizing |
-| **L** | 🤖 LLM Enhancer | Advanced AI context generation |
-| **M** | 🎛️ Model Tuner | Auto-detect model & optimize |
-| **B** | 🎨 Beautify | Organize & clean up workflow |
-| **S** | 💾 Save As | Save to new file (branch version) |
-| **C** | Test Connection | Verify ComfyUI API access |
-| **T** | Change Target | Switch to different workflow |
-| **E** | Export Session | Save session to file |
-| **Q** | Quit | Exit (saves configuration) |
-
-## Model Tuner
-
-The Model Tuner automatically detects your model type and applies optimal settings:
-
-### Supported Models
-
-| Model | Resolution | Steps | CFG | Best Samplers |
-|-------|------------|-------|-----|---------------|
-| SD 1.5 | 512x512 | 25 | 7.5 | dpmpp_2m, euler_ancestral |
-| SD 2.1 | 768x768 | 30 | 7.0 | dpmpp_2m, euler |
-| SDXL | 1024x1024 | 30 | 7.0 | dpmpp_2m_sde, euler_ancestral |
-| SDXL Turbo | 512x512 | 4 | 1.0 | euler_ancestral |
-| SD3 | 1024x1024 | 28 | 4.5 | euler, dpmpp_2m |
-| Flux Dev | 1024x1024 | 28 | 3.5 | euler, ipndm |
-| Flux Schnell | 1024x1024 | 4 | 1.0 | euler |
-| Stable Cascade | 1024x1024 | 20 | 4.0 | euler |
-
-### Model Tuner Features
-
-- **Auto-Detection**: Identifies model from workflow nodes and settings
-- **Optimal Presets**: Speed, Balanced, Quality, Creative, Consistent
-- **LoRA Recommendations**: Suggested strengths per model type
-- **Sampler Guide**: Best sampler/scheduler combos for each use case
-
-### Usage
-
-1. Load your workflow
-2. Press **M** for Model Tuner
-3. Review detected model and optimal settings
-4. Choose an action:
-   - Apply optimal settings
-   - Create speed variant
-   - Create quality variant
-   - View all recommendations
-
-## Workflow Beautifier
-
-Press **B** to organize and clean up your workflow layout:
-
-| Mode | Description |
-|------|-------------|
-| 📐 Organize by Category | Group nodes by function (input, model, sampling, output) |
-| 📏 Align to Grid | Snap all nodes to 50px grid |
-| ➡️ Flow Left-to-Right | Arrange nodes in L→R processing flow |
-| ⬇️ Flow Top-to-Down | Arrange nodes in T→D processing flow |
-| 📦 Compact Layout | Minimize space (0.7x spacing) |
-| 📭 Expand Layout | Add breathing room (1.4x spacing) |
-| 🎨 Color Code Nodes | Color nodes by function |
-| 📁 Create Groups | Add visual group boxes around categories |
-
-### Node Categories
-
-Nodes are automatically categorized:
-
-- **Input**: Loaders, images, masks
-- **Model**: Checkpoints, UNETs, VAEs, CLIPs, LoRAs
-- **Conditioning**: Prompts, text encoders
-- **Sampling**: KSamplers, schedulers
-- **ControlNet**: Preprocessors, ControlNet apply
-- **IPAdapter**: Face/style adapters
-- **Upscale**: ESRGAN, Ultimate Upscale
-- **Output**: Save, preview nodes
-
-## LLM Enhancer
-
-Press **L** to access advanced AI context generation for better LLM assistance:
-
-### Features
-
-| Option | Description |
-|--------|-------------|
-| **📋 Generate Full Context** | Comprehensive prompt with all available context |
-| **🔧 Debug Workflow** | Generate debug-focused prompt for fixing errors |
-| **⚡ Optimize Speed** | Generate speed optimization prompt |
-| **🎨 Improve Quality** | Generate quality improvement prompt |
-| **💾 Reduce VRAM** | Generate VRAM optimization prompt |
-| **📖 Explain Workflow** | Generate explanation request prompt |
-| **✅ Validate Response** | Validate and parse LLM mod response before applying |
-| **🔍 Node Catalog** | Browse installed ComfyUI nodes |
-| **💻 System Specs** | Show current hardware context |
-| **📚 Knowledge Base** | Browse and search common solutions |
-| **📜 History** | View past LLM interactions |
-| **🗺️ Workflow Graph** | ASCII/Mermaid visualization |
-
-### Goal-Based Prompt Templates
-
-Each goal generates a specialized prompt:
-
-- **Debug**: Includes error logs, node validation, fix format
-- **Speed**: Focuses on step reduction, samplers, caching
-- **Quality**: Upscaling, refinement passes, CFG tuning
-- **VRAM**: Tiled VAE, fp16/fp8, memory-efficient techniques
-- **Explain**: Educational breakdown of workflow components
-
-### Node Catalog
-
-Queries ComfyUI's `/object_info` API to get all installed nodes:
-
 ```
-# Available ComfyUI Nodes
-Total nodes: 847
-Categories: 42
+⚡ MAIN MENU
+Target: my_workflow.json
+ComfyUI: ● Connected
 
-## conditioning (15 nodes)
-  - CLIPTextEncode [conditioning] - in(clip: CLIP, text: STRING) -> out(CONDITIONING)
-  - ConditioningCombine [conditioning] - in(conditioning_1: CONDITIONING) -> out(CONDITIONING)
-  ...
+  1  Apply a Mod (from mods folder)
+  2  ⚡ Quick Actions (instant one-click optimizations)
+  3  Generate LLM Prompt (for Claude/GPT/Gemini)
+  4  Paste New Mod (from AI response)
+  5  🧠 Smart Suggestions (AI-free analysis)
+  6  📊 Benchmark Mode (run 3x for reliable metrics)
+  7  📈 View Dashboard (see all your optimizations)
+  8  ⚙️  Presets (8GB VRAM, Speed Test, etc.)
+  9  Set Goal (tell the AI what you want)
+  L  🤖 LLM Enhancer (advanced AI context)
+  M  🎛️  Model Tuner (auto-detect SD/SDXL/Flux)
+  D  🌐 Distributed (multi-machine optimization)
+  Q  Quit
 ```
 
-### System Specs
+---
 
-Automatically detects and includes:
+## What Makes It Different?
 
-- OS and version
-- CPU name and cores
-- RAM amount
-- GPU name and VRAM
-- CUDA version
-- PyTorch version
-- Optimization notes based on hardware
+### Simple Iterative Loop
+Most optimization tools give you one suggestion. Performance Lab lets you **iterate** - make a change, test it, keep or discard, repeat. This is how real optimization works.
 
-### Mod Validation
+### Works with Any LLM
+Use Claude, ChatGPT, GPT-4, Gemini, Llama, Mistral - whatever you have access to. Performance Lab generates optimized prompts for each.
 
-Validates LLM-generated mods before applying:
+### Minimal File Clutter
+- **Accept** = overwrites your original workflow
+- **Reject** = discards the changes completely
+- No `_v1`, `_v2`, `_final_FINAL` files everywhere
 
-- **JSON syntax check**: Fixes common formatting issues
-- **Node validation**: Verifies all nodes exist in catalog
-- **Link validation**: Checks connections are valid
-- **Breaking change detection**: Warns about removed nodes or type changes
-- **Auto-fix**: Attempts to repair common issues
+### Smart Protection
+Performance Lab knows when changes are risky:
+- Won't overwrite an SD 1.5 workflow with SDXL settings
+- Warns you about significant changes
+- Tracks what model family you're using
 
-### Conversation Memory
+---
 
-Persists context across sessions (SQLite database):
+## Quick Actions (No AI Needed)
 
-- Tracks optimization attempts per workflow
-- Records applied/success status
-- Shows success rates and patterns
-- Provides history context in prompts
+Press **[2]** for instant optimizations:
 
-### Knowledge Base
-
-Built-in solutions for common issues:
-
-- **VRAM**: OOM errors, tiling, precision
-- **Quality**: Black images, artifacts, CFG tuning
-- **Speed**: Slow generation, CUDA issues
-- **Models**: Flux CFG, LoRA strength, sampler selection
-- **Nodes**: Missing nodes, compatibility
-
-Entries are automatically matched to your workflow.
-
-## Quick Actions
-
-One-key optimizations that instantly create an experimental file:
-
-| Action | Effect | Impact |
-|--------|--------|--------|
+| Action | What It Does | Expected Improvement |
+|--------|-------------|---------------------|
 | Cap 768px | Reduce all resolutions to 768 | ~60% faster |
 | Cap 1024px | Reduce all resolutions to 1024 | ~40% faster |
 | Bypass Upscalers | Skip all upscaler nodes | 2-4GB VRAM saved |
 | Reduce Steps | Set sampling steps to 20 | Faster iteration |
-| Reduce Batch | Set batch size to 1 | VRAM reduction |
-| 🚀 Speed Test | All optimizations combined | Max speed |
-| 💾 8GB VRAM | Optimized for 8GB GPUs | Fit on 8GB cards |
-| ↩️ Revert | Restore original workflow | Undo all changes |
+| 🚀 Speed Test | All optimizations combined | Maximum speed |
+| 💾 8GB VRAM | Optimized for 8GB GPUs | Fits on 8GB cards |
 
-## Smart Suggestions
+---
 
-The lab automatically analyzes your workflow and suggests optimizations:
+## AI-Assisted Optimization
 
-```
-[CRITICAL] Cap resolution from 2048px to 768px for testing
-   → Very high resolution - cap to 768 for faster iteration
+Press **[3]** to generate a prompt for your favorite LLM:
 
-[HIGH] Bypass upscalers during testing
-   → Upscalers are VRAM-heavy and not needed for iteration
+1. Performance Lab creates a detailed prompt with:
+   - Your workflow structure
+   - Current performance metrics
+   - Your optimization goal
+   - System specs (GPU, VRAM, etc.)
 
-[MEDIUM] Reduce steps from 50 to 20 for testing
-   → 20 steps often sufficient for testing composition
-```
+2. Copy the prompt to Claude/ChatGPT/Gemini
 
-No external LLM needed - these are rule-based suggestions from analyzing your workflow structure!
+3. The AI responds with optimized workflow code
 
-## Benchmark Mode
+4. Press **[4]** and paste the response
 
-Run your workflow multiple times for reliable metrics:
+5. Test it, then Accept or Reject
 
-```
-═══ Run 1/3 ═══
-✓ Run 1: 12.45s | Peak VRAM: 7.82GB
+### Supported Goals
 
-═══ Run 2/3 ═══
-✓ Run 2: 12.31s | Peak VRAM: 7.81GB
+Tell the AI what you want with **[9] Set Goal**:
 
-═══ Run 3/3 ═══
-✓ Run 3: 12.52s | Peak VRAM: 7.83GB
+- **Speed** - "Make this run in under 10 seconds"
+- **VRAM** - "Make this work on 8GB VRAM"
+- **Quality** - "Improve image quality without changing speed much"
+- **Debug** - "Fix why this keeps giving black images"
 
-📊 BENCHMARK RESULTS
-Duration:
-  Average: 12.43s
-  Min: 12.31s
-  Max: 12.52s
-  Range: ±0.10s
+---
 
-Peak VRAM:
-  Average: 7.82 GB
-```
+## Multi-Machine / Network Workflows (v0.4)
 
-## Presets
+Press **[D]** for distributed workflow optimization.
 
-Quick-apply optimization profiles:
+If your workflow uses remote services (Kobold LLM, remote ComfyUI, TTS, STT), Performance Lab can:
 
-| Preset | Settings |
-|--------|----------|
-| 🚀 Speed Test | 512px, 15 steps, no upscale, batch 1 |
-| 💾 8GB VRAM | 768px, batch 1, no upscale |
-| ⚖️ Balanced | 1024px, 25 steps |
-| 🎨 Quality | Original settings |
+- **Health check** all your endpoints
+- **Measure latency** to each service
+- **Find bottlenecks** (which machine is slow?)
+- **Suggest parallelization** (what can run simultaneously?)
+- **Generate smart prompts** with your machine specs so the AI can suggest things like "move STT to machine 2" or "lower context size on the LLM server"
 
-## LLM Prompt Generation
+### Included Network Nodes
 
-Generate optimized prompts for external LLMs:
+The `ComfyUI_NetworkServices` custom node pack includes:
 
-- **Claude** - Detailed context, nuanced reasoning
-- **GPT-4** - Structured format, explicit instructions
-- **Gemini** - Concise, efficient prompts
-- **Llama/Mistral** - Clear examples, explicit format
+| Node | What It Does |
+|------|-------------|
+| **KoboldLLM** | Connect to Kobold instances for text generation |
+| **RemoteComfyUI** | Run workflows on remote ComfyUI servers |
+| **LocalGenerator** | Universal REST API node (70+ presets) |
+| **EndpointHealthCheck** | Monitor service availability |
 
-The prompts include:
-- Your optimization goal
-- Workflow structure analysis
-- Node type distribution
-- Modification history
-- Latest test results
-- Request format for mod code
+### Supported Services (70+ presets)
 
-## Writing Mods
+**Image/Video**: ComfyUI, Automatic1111, Forge, InvokeAI, Fooocus, AnimateDiff, SVD, Mochi, CogVideo...
 
-Mods are simple Python files:
+**LLM**: KoboldCpp, Ollama, llama.cpp, Text-Gen-WebUI, vLLM, LMDeploy, TGI, LocalAI...
+
+**STT**: Whisper, Faster-Whisper, whisper.cpp, WhisperX, NeMo ASR, Vosk...
+
+**TTS**: Coqui TTS, XTTS, AllTalk, Silero, Piper, Bark, Tortoise, StyleTTS2...
+
+**And more**: Embeddings, Vision models, Audio generation, Upscaling...
+
+---
+
+## Model Tuner
+
+Press **[M]** to auto-detect your model and apply optimal settings.
+
+| Model | Resolution | Steps | CFG | Best Samplers |
+|-------|------------|-------|-----|---------------|
+| SD 1.5 | 512x512 | 25 | 7.5 | dpmpp_2m, euler_ancestral |
+| SDXL | 1024x1024 | 30 | 7.0 | dpmpp_2m_sde, euler_ancestral |
+| SD3 | 1024x1024 | 28 | 4.5 | euler, dpmpp_2m |
+| Flux Dev | 1024x1024 | 28 | 3.5 | euler, ipndm |
+| Flux Schnell | 1024x1024 | 4 | 1.0 | euler |
+
+---
+
+## LLM Enhancer
+
+Press **[L]** for advanced AI context generation:
+
+- **Node Catalog** - Shows all your installed ComfyUI nodes
+- **System Specs** - Includes your GPU, VRAM, CPU info
+- **Knowledge Base** - Common issues and solutions
+- **Mod Validation** - Validates AI responses before applying
+- **Conversation Memory** - Remembers context across sessions
+
+---
+
+## Writing Custom Mods
+
+Create a Python file in the `mods/` folder:
 
 ```python
 # mods/my_optimization.py
 
-description = "Brief description shown in the menu"
+description = "What this mod does (shown in menu)"
 
 def apply(content):
     """
-    Args:
-        content: Parsed JSON workflow (dict)
-
-    Returns:
-        Modified dict if changes made, None otherwise
+    content: The workflow as a Python dict
+    Returns: Modified dict, or None if no changes
     """
-    nodes = content.get("nodes", [])
-
-    for node in nodes:
+    for node in content.get("nodes", []):
         # Your optimization logic here
         pass
-
-    return content  # or None if no changes
-```
-
-### Node Mode Values
-
-| Mode | Effect |
-|------|--------|
-| 0 | Always execute (normal) |
-| 1 | Bypass (skip, pass inputs through) |
-| 2 | Mute (completely disabled) |
-| 4 | Never execute |
-
-### Example Mods
-
-**Cap Resolution:**
-```python
-description = "Cap all resolutions to 512px"
-
-def apply(content):
-    for node in content.get("nodes", []):
-        widgets = node.get("widgets_values", [])
-        for i, w in enumerate(widgets):
-            if isinstance(w, int) and w > 512 and w % 8 == 0:
-                widgets[i] = 512
     return content
 ```
 
-**Reduce Steps:**
-```python
-description = "Reduce sampling steps to 20"
-
-def apply(content):
-    for node in content.get("nodes", []):
-        if "sampler" in node.get("type", "").lower():
-            widgets = node.get("widgets_values", [])
-            for i, w in enumerate(widgets):
-                if isinstance(w, int) and 20 < w <= 150:
-                    widgets[i] = 20
-    return content
-```
-
-## Metrics Collected
-
-During generation monitoring:
-
-- **Duration**: Total generation time in seconds
-- **Peak VRAM**: Maximum GPU memory used
-- **Average VRAM**: Mean VRAM during generation
-- **Baseline VRAM**: Memory used before generation
-- **Error Details**: Node IDs, types, and messages
-- **Success/Failure**: Generation completion status
-
-## Configuration
-
-Settings are saved automatically to `performance_lab_config.json`:
-
-- Last workflow path
-- Last optimization goal
-- Benchmark run count
-- ComfyUI URL
-- Custom presets
-
-Edit `COMFY_URL` at the top of `performance_lab.py` to change the default:
-
-```python
-COMFY_URL = "http://127.0.0.1:8188"  # ComfyUI API address
-```
-
-## The Optimization Loop
-
-```
-                    ┌─────────────────────────────┐
-                    │   Your ComfyUI Workflow     │
-                    └─────────────┬───────────────┘
-                                  │
-           ┌──────────────────────┴──────────────────────┐
-           │                                             │
-┌──────────▼──────────┐                    ┌─────────────▼──────────┐
-│  Quick Actions (2)  │         OR         │  Smart Suggestions (5) │
-│  Instant one-key    │                    │  AI-free analysis      │
-│  optimizations      │                    │  of your workflow      │
-└──────────┬──────────┘                    └─────────────┬──────────┘
-           │                                             │
-           └──────────────────────┬──────────────────────┘
-                                  │
-                    ┌─────────────▼───────────────┐
-                    │   Test in ComfyUI           │
-                    │   (Monitors automatically)  │
-                    └─────────────┬───────────────┘
-                                  │
-                    ┌─────────────▼───────────────┐
-                    │   Review Metrics            │
-                    │   • Duration                │
-                    │   • VRAM usage              │
-                    │   • Errors                  │
-                    │   • Comparison to baseline  │
-                    └─────────────┬───────────────┘
-                                  │
-                    ┌─────────────▼───────────────┐
-                    │   Keep or Revert?           │
-                    │   Your choice!              │
-                    └─────────────┬───────────────┘
-                                  │
-                                  └──────────► Repeat!
-```
-
-## Tips
-
-1. **Start with Smart Suggestions** - Get instant recommendations without an LLM
-2. **Use Benchmark Mode** for baselines - Know your starting point
-3. **Quick Actions for testing** - Bypass upscalers, reduce resolution
-4. **Set a clear goal** - "Reduce VRAM to 8GB" is better than "optimize"
-5. **Export sessions** - Track your progress over time
-6. **The dashboard shows trends** - See if optimizations are working
-
-## Requirements
-
-- Python 3.7+
-- ComfyUI running with API enabled (default: http://127.0.0.1:8188)
-- Terminal with ANSI color support (most modern terminals)
+---
 
 ## Troubleshooting
 
 **ComfyUI not detected?**
-- Make sure ComfyUI is running
-- Check the URL with option [C] Test Connection
-- Try changing the URL if ComfyUI is on a different port
+- Make sure ComfyUI is running before starting Performance Lab
+- Check connection with **[C]** Test Connection
+- Default URL is `http://127.0.0.1:8188`
+
+**Clipboard not working on Linux?**
+- Install xclip: `sudo apt install xclip`
+- Or manually copy/paste the prompts
 
 **Mod not working?**
-- Check syntax with `python -m py_compile yourmod.py`
-- Ensure `apply()` returns the modified dict
-- Return `None` if no changes were made
+- Test syntax: `python -m py_compile mods/yourmod.py`
+- Make sure `apply()` returns the modified content
 
-**Clipboard not working?**
-- Install `xclip` on Linux: `sudo apt install xclip`
-- Or manually copy the generated prompt
+---
+
+## File Structure
+
+```
+ComfyUI_PerformanceLab/
+├── performance_lab.py       # Main application
+├── llm_enhancer.py          # AI context generation
+├── model_tuner.py           # Model detection & tuning
+├── workflow_utils.py        # Workflow analysis
+├── distributed_optimizer.py # Multi-machine support
+├── services_config.py       # Network services config
+├── logging_config.py        # Logging setup
+├── install.py               # One-step installer
+├── mods/                    # Your mod collection
+│   ├── vram_optimizer.py
+│   ├── bypass_upscalers.py
+│   └── ...
+├── custom_nodes/            # ComfyUI network nodes
+│   └── ComfyUI_NetworkServices/
+└── tests/                   # Test suite
+```
+
+---
 
 ## Version History
 
-- **v0.3.0**
-  - LLM Enhancer module for advanced AI context generation
-  - Node Catalog Export - queries ComfyUI /object_info API
-  - System Specs collector - GPU, VRAM, CPU info for context
-  - Goal-based prompt templates (Debug, Speed, Quality, VRAM, Explain)
-  - Mod Validation Layer - validates LLM responses before applying
-  - Conversation Memory - persists context across sessions
-  - Knowledge Base - common issues and solutions library
-  - Workflow Graph Export - ASCII and Mermaid visualizations
-  - Error History tracking and export
+**v0.4.0** - Multi-Machine Distributed Optimization
+- New [D] Distributed menu for multi-machine pipelines
+- ComfyUI_NetworkServices node pack (70+ service presets)
+- KoboldLLM, RemoteComfyUI, LocalGenerator, HealthCheck nodes
+- Machine profiling and bottleneck detection
+- Services configuration file support
+- Improved error handling and logging
+- Test suite with pytest
 
-- **v0.2.1**
-  - Iterative workflow (accept=overwrite, reject=discard)
-  - Workflow fingerprinting & incompatible overwrite protection
-  - Beautification menu (organize, align, color code)
-  - Save As option for explicit version branching
+**v0.3.0** - LLM Enhancer
+- Advanced AI context generation
+- Node Catalog, System Specs, Knowledge Base
+- Mod Validation, Conversation Memory
 
-- **v0.2.0**
-  - Model Tuner with auto-detection (SD1.5, SDXL, Flux, SD3, etc.)
-  - Model-specific optimization presets
-  - LoRA strength recommendations
-  - Sampler/scheduler recommendations per model
-  - One-step installer (install.py)
+**v0.2.0** - Model Tuner
+- Auto-detection for SD1.5, SDXL, Flux, SD3
+- Model-specific presets and LoRA recommendations
 
-- **v0.1.0**
-  - Quick Actions menu
-  - Benchmark Mode
-  - Smart Suggestions
-  - Presets System
-  - Progress Dashboard
-  - Multi-Platform Clipboard
-  - Configuration Persistence
-  - Built-in Mods Library
+**v0.1.0** - Initial Release
+- Quick Actions, Benchmark Mode, Smart Suggestions
+- Presets, Dashboard, Multi-platform clipboard
+
+---
 
 ## License
 

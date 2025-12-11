@@ -5,9 +5,13 @@ Supports KoboldAI and KoboldCpp API endpoints.
 """
 
 import json
+import logging
 import time
 import requests
 from typing import Dict, Any, Tuple, Optional
+
+# Setup module logger
+logger = logging.getLogger("performance_lab.nodes.kobold")
 
 
 class KoboldLLM:
@@ -326,8 +330,13 @@ def get_kobold_model_info(endpoint: str, timeout: int = 10) -> Optional[Dict[str
         response = requests.get(f"{endpoint}/api/v1/model", timeout=timeout)
         if response.status_code == 200:
             return response.json()
-    except:
-        pass
+        logger.debug(f"Kobold model info returned status {response.status_code}")
+    except requests.exceptions.Timeout:
+        logger.debug(f"Timeout getting model info from {endpoint}")
+    except requests.exceptions.ConnectionError as e:
+        logger.debug(f"Connection error getting model info from {endpoint}: {e}")
+    except Exception as e:
+        logger.warning(f"Unexpected error getting model info from {endpoint}: {e}")
     return None
 
 
@@ -338,6 +347,11 @@ def get_kobold_max_context(endpoint: str, timeout: int = 10) -> Optional[int]:
         if response.status_code == 200:
             data = response.json()
             return data.get("value")
-    except:
-        pass
+        logger.debug(f"Kobold max context returned status {response.status_code}")
+    except requests.exceptions.Timeout:
+        logger.debug(f"Timeout getting max context from {endpoint}")
+    except requests.exceptions.ConnectionError as e:
+        logger.debug(f"Connection error getting max context from {endpoint}: {e}")
+    except Exception as e:
+        logger.warning(f"Unexpected error getting max context from {endpoint}: {e}")
     return None

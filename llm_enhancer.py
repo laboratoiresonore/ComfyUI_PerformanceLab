@@ -15,6 +15,7 @@ Features:
 """
 
 import json
+import logging
 import os
 import re
 import hashlib
@@ -27,6 +28,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any, Set
 from collections import defaultdict
+
+# Setup module logger
+logger = logging.getLogger("performance_lab.llm")
 
 try:
     import urllib.request

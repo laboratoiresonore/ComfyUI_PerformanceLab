@@ -6,6 +6,7 @@ Designed for multi-machine setups optimized by Performance Lab.
 """
 
 import json
+import logging
 import time
 import requests
 import io
@@ -13,6 +14,9 @@ import base64
 from typing import Dict, Any, Tuple, Optional, List
 from PIL import Image
 import numpy as np
+
+# Setup module logger
+logger = logging.getLogger("performance_lab.nodes.network_api")
 
 
 class NetworkAPI:
@@ -407,8 +411,9 @@ class NetworkAPI:
             error_detail = ""
             try:
                 error_detail = response.text[:500]
-            except:
-                pass
+            except (AttributeError, UnicodeDecodeError) as text_err:
+                logger.debug(f"Could not get error detail: {text_err}")
+            logger.error(f"HTTP error from API: {e}")
             raise RuntimeError(f"API error: {e}\n{error_detail}")
 
         execution_time = time.time() - start_time
@@ -491,7 +496,7 @@ class NetworkAPI:
     def _decode_base64_images(self, images: List[str]) -> Any:
         """Decode base64 images to numpy array."""
         decoded = []
-        for img_data in images:
+        for idx, img_data in enumerate(images):
             try:
                 img_bytes = base64.b64decode(img_data)
                 img = Image.open(io.BytesIO(img_bytes))
@@ -501,8 +506,12 @@ class NetworkAPI:
                 elif img_array.shape[-1] == 4:
                     img_array = img_array[:, :, :3]
                 decoded.append(img_array)
-            except:
-                pass
+            except (base64.binascii.Error, ValueError) as e:
+                logger.debug(f"Failed to decode base64 image {idx}: {e}")
+            except (IOError, OSError) as e:
+                logger.debug(f"Failed to open image {idx}: {e}")
+            except Exception as e:
+                logger.warning(f"Unexpected error decoding image {idx}: {e}")
         if decoded:
             return np.stack(decoded)
         return None
@@ -517,7 +526,11 @@ class NetworkAPI:
             elif img_array.shape[-1] == 4:
                 img_array = img_array[:, :, :3]
             return np.stack([img_array])
-        except:
+        except (IOError, OSError) as e:
+            logger.debug(f"Failed to convert bytes to image: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Unexpected error converting bytes to image: {e}")
             return None
 
 
