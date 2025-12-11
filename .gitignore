@@ -4,6 +4,10 @@ __pycache__/
 *.json
 !mods/*.py
 
+# Markdown files (keep README visible on GitHub)
+*.md
+!README.md
+
 # Local files
 single_workflow_fix.py
 wan_5060ti_fix.py
