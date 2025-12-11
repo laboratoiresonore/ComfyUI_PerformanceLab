@@ -3,3 +3,8 @@ __pycache__/
 *.pyo
 *.json
 !mods/*.py
+
+# Local files
+single_workflow_fix.py
+wan_5060ti_fix.py
+performancelab.code-workspace
