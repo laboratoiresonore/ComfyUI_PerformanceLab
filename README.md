@@ -38,15 +38,37 @@
 
 ## Overview
 
-Performance Lab creates a **human-in-the-loop optimization cycle** where you:
+Performance Lab creates an **iterative optimization cycle** with minimal file clutter:
 
-1. **Apply** a mod or quick action to your ComfyUI workflow
-2. **Test** it by running ComfyUI (monitors automatically)
-3. **Review** rich metrics (timing, VRAM, errors)
-4. **Decide** to keep or revert changes
-5. **Repeat** until your workflow is optimized
+### The Workflow
 
-You can use the built-in smart suggestions for instant optimizations, or generate prompts for external LLMs (Claude, GPT-4, Gemini, Llama) for deeper analysis.
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│  1. LOAD      Load any ComfyUI workflow                                │
+│  2. COLLECT   Run Performance Lab data collection (benchmark baseline)  │
+│  3. GENERATE  Generate LLM prompt with workflow + metrics              │
+│  4. SUBMIT    Copy-paste prompt to Claude/Gemini/GPT-4                 │
+│  5. RECEIVE   Get formatted mod code from LLM                          │
+│  6. PASTE     Paste mod directly into Performance Lab                  │
+│  7. TEST      Run optimized workflow in ComfyUI (auto-monitors)        │
+│  8. REVIEW    See metrics: timing, VRAM, errors, comparison            │
+│  9. DECIDE    Accept (overwrites original) or Reject (discards)        │
+│  10. REPEAT   Continue until fully optimized                           │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Principles
+
+- **Minimal file clutter**: Accept overwrites the original, Reject discards changes
+- **Smart protection**: Never overwrites incompatible configs (e.g., SD → Flux)
+- **Model detection**: Auto-detects when model family changes
+- **Use "Save As" only when needed**: Explicit saves for version branching
+
+### Safety Features
+
+- **Fingerprint detection**: Tracks model family, resolution, features
+- **Incompatible overwrite protection**: Blocks SD1.5 → SDXL → Flux overwrites
+- **Warnings**: Alerts for significant changes before applying
 
 ## Installation
 
@@ -124,6 +146,8 @@ python performance_lab.py
 | **8** | ⚙️ Presets | Apply optimization presets |
 | **9** | Set Goal | Tell LLMs what you're optimizing |
 | **M** | 🎛️ Model Tuner | Auto-detect model & optimize |
+| **B** | 🎨 Beautify | Organize & clean up workflow |
+| **S** | 💾 Save As | Save to new file (branch version) |
 | **C** | Test Connection | Verify ComfyUI API access |
 | **T** | Change Target | Switch to different workflow |
 | **E** | Export Session | Save session to file |
@@ -163,6 +187,34 @@ The Model Tuner automatically detects your model type and applies optimal settin
    - Create speed variant
    - Create quality variant
    - View all recommendations
+
+## Workflow Beautifier
+
+Press **B** to organize and clean up your workflow layout:
+
+| Mode | Description |
+|------|-------------|
+| 📐 Organize by Category | Group nodes by function (input, model, sampling, output) |
+| 📏 Align to Grid | Snap all nodes to 50px grid |
+| ➡️ Flow Left-to-Right | Arrange nodes in L→R processing flow |
+| ⬇️ Flow Top-to-Down | Arrange nodes in T→D processing flow |
+| 📦 Compact Layout | Minimize space (0.7x spacing) |
+| 📭 Expand Layout | Add breathing room (1.4x spacing) |
+| 🎨 Color Code Nodes | Color nodes by function |
+| 📁 Create Groups | Add visual group boxes around categories |
+
+### Node Categories
+
+Nodes are automatically categorized:
+
+- **Input**: Loaders, images, masks
+- **Model**: Checkpoints, UNETs, VAEs, CLIPs, LoRAs
+- **Conditioning**: Prompts, text encoders
+- **Sampling**: KSamplers, schedulers
+- **ControlNet**: Preprocessors, ControlNet apply
+- **IPAdapter**: Face/style adapters
+- **Upscale**: ESRGAN, Ultimate Upscale
+- **Output**: Save, preview nodes
 
 ## Quick Actions
 

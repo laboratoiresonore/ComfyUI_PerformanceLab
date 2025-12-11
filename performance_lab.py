@@ -45,11 +45,22 @@ try:
 except ImportError:
     MODEL_TUNER_AVAILABLE = False
 
+# Try to import workflow utilities for fingerprinting and beautification
+try:
+    from workflow_utils import (
+        WorkflowFingerprinter, WorkflowFingerprint, ModelFamily,
+        WorkflowBeautifier, BeautifyMode, WorkflowDiff,
+        is_safe_to_overwrite, suggest_filename
+    )
+    WORKFLOW_UTILS_AVAILABLE = True
+except ImportError:
+    WORKFLOW_UTILS_AVAILABLE = False
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 MODS_DIR = "mods"
 COMFY_URL = "http://127.0.0.1:8188"
 SESSION_LOG = "session_history.json"
@@ -1516,6 +1527,10 @@ class PerformanceLab:
                 self.export_session()
             elif choice == 'm':
                 self.model_tuner_menu()
+            elif choice == 'b':
+                self.beautify_menu()
+            elif choice == 's':
+                self.save_as_menu()
             else:
                 print(f"  {styled('Invalid choice', Style.YELLOW)}")
 
@@ -1604,8 +1619,10 @@ class PerformanceLab:
             ("8", "⚙️  Presets", "8GB VRAM, Speed Test...", Style.WHITE),
             ("9", "Set Goal", self.user_goal[:20] + "..." if len(self.user_goal) > 20 else (self.user_goal or "Not set"), Style.WHITE),
             ("M", "🎛️  Model Tuner", "Auto-detect & optimize", Style.GREEN),
+            ("B", "🎨 Beautify", "Organize & clean up", Style.MAGENTA),
             ("C", "Test Connection", "", Style.WHITE),
             ("T", "Change Target", "", Style.WHITE),
+            ("S", "Save As...", "Save to new file", Style.WHITE),
             ("E", "Export Session", "", Style.WHITE),
             ("Q", "Quit", "", Style.RED),
         ]
@@ -2189,6 +2206,149 @@ class PerformanceLab:
                 print(f"    Scheduler: {rec['recommended_scheduler']}")
                 print(f"    Steps:     {rec['recommended_steps']}")
                 print(f"    CFG:       {rec['recommended_cfg']}")
+
+        input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
+
+    def beautify_menu(self):
+        """Workflow beautification menu."""
+        if not WORKFLOW_UTILS_AVAILABLE:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Workflow utilities not available.")
+            print(f"  {styled('Make sure workflow_utils.py is in the same directory.', Style.DIM)}")
+            return
+
+        if not self.workflow_content:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Load a workflow first.")
+            return
+
+        print_box("🎨 Workflow Beautifier", [
+            "Organize and clean up your workflow layout.",
+            "Choose a beautification style:",
+        ], Style.MAGENTA, icon="")
+
+        modes = [
+            ("1", "📐 Organize by Category", "Group nodes logically", BeautifyMode.ORGANIZE),
+            ("2", "📏 Align to Grid", "Snap all nodes to grid", BeautifyMode.ALIGN_GRID),
+            ("3", "➡️  Flow Left-to-Right", "Arrange in L→R flow", BeautifyMode.FLOW_LEFT_RIGHT),
+            ("4", "⬇️  Flow Top-to-Down", "Arrange in T→D flow", BeautifyMode.FLOW_TOP_DOWN),
+            ("5", "📦 Compact Layout", "Minimize space usage", BeautifyMode.COMPACT),
+            ("6", "📭 Expand Layout", "Add breathing room", BeautifyMode.EXPAND),
+            ("7", "🎨 Color Code Nodes", "Color by function", BeautifyMode.COLOR_CODE),
+            ("8", "📁 Create Groups", "Add group boxes", None),  # Special case
+        ]
+
+        print()
+        for key, name, desc, _ in modes:
+            print(f"    {styled(key, Style.CYAN)} {name}")
+            print(f"       {styled(desc, Style.DIM)}")
+
+        print(f"\n    {styled('B', Style.CYAN)} Back to main menu")
+
+        choice = input(f"\n  {styled('▶', Style.CYAN)} Select style: ").strip().lower()
+
+        if choice == 'b':
+            return
+
+        mode_map = {str(i+1): modes[i][3] for i in range(len(modes))}
+
+        if choice not in mode_map:
+            print(f"  {styled('Invalid choice', Style.YELLOW)}")
+            return
+
+        selected_mode = mode_map[choice]
+
+        try:
+            if choice == '8':
+                # Special: create groups
+                beautified = WorkflowBeautifier.create_groups_by_category(self.workflow_content)
+            else:
+                beautified = WorkflowBeautifier.beautify(self.workflow_content, selected_mode)
+
+            # Show preview
+            old_fp = WorkflowFingerprinter.fingerprint(self.workflow_content)
+            new_fp = WorkflowFingerprinter.fingerprint(beautified)
+
+            print(f"\n  {styled('✓', Style.GREEN)} Beautification complete!")
+            print(f"    Nodes: {new_fp.node_count}")
+
+            # Ask to apply
+            apply = input(f"\n  {styled('▶', Style.CYAN)} Apply changes to workflow? (y/n): ").strip().lower()
+
+            if apply == 'y':
+                # Check compatibility before overwrite
+                is_safe, warnings = is_safe_to_overwrite(self.original_content, beautified)
+
+                if not is_safe:
+                    print(f"\n  {styled('⚠ INCOMPATIBLE CHANGES DETECTED:', Style.RED, Style.BOLD)}")
+                    for w in warnings:
+                        print(f"    {styled('!', Style.RED)} {w}")
+                    print(f"\n  {styled('Cannot overwrite - model family changed.', Style.YELLOW)}")
+                    alt_path = suggest_filename(self.target_workflow, beautified)
+                    save_alt = input(f"  {styled('▶', Style.CYAN)} Save to {alt_path} instead? (y/n): ").strip().lower()
+                    if save_alt == 'y':
+                        write_workflow(alt_path, beautified)
+                        print(f"  {styled('✓', Style.GREEN)} Saved to: {alt_path}")
+                else:
+                    if warnings:
+                        print(f"\n  {styled('⚠ Warnings:', Style.YELLOW)}")
+                        for w in warnings:
+                            print(f"    {w}")
+
+                    # Overwrite original
+                    self.workflow_content = beautified
+                    write_workflow(self.target_workflow, beautified)
+                    print(f"  {styled('✓', Style.GREEN)} Applied and saved to: {self.target_workflow}")
+
+                    # Re-analyze
+                    self.session.workflow_analysis = WorkflowAnalyzer.analyze(beautified)
+
+        except Exception as e:
+            print(f"  {styled('✗ Error:', Style.RED)} {e}")
+
+        input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
+
+    def save_as_menu(self):
+        """Save current workflow to a new file."""
+        if not self.workflow_content:
+            print(f"\n  {styled('⚠', Style.YELLOW)} No workflow loaded.")
+            return
+
+        print_box("💾 Save As", [
+            "Save the current workflow to a new file.",
+            "The original file will remain unchanged.",
+        ], Style.BLUE, icon="")
+
+        # Suggest filename
+        if self.target_workflow:
+            base = self.target_workflow.rsplit(".", 1)[0]
+            suggested = f"{base}_v2.json"
+        else:
+            suggested = "workflow_optimized.json"
+
+        print(f"\n  {styled('Suggested:', Style.DIM)} {suggested}")
+        path = input(f"  {styled('▶', Style.CYAN)} Save path (Enter for suggested): ").strip()
+
+        if not path:
+            path = suggested
+
+        if not path.endswith(".json"):
+            path += ".json"
+
+        # Check if file exists
+        if os.path.exists(path):
+            overwrite = input(f"  {styled('⚠', Style.YELLOW)} File exists. Overwrite? (y/n): ").strip().lower()
+            if overwrite != 'y':
+                print(f"  {styled('Cancelled', Style.DIM)}")
+                return
+
+        if write_workflow(path, self.workflow_content):
+            print(f"  {styled('✓', Style.GREEN)} Saved to: {styled(path, Style.BOLD)}")
+
+            # Ask if user wants to switch to this file
+            switch = input(f"  {styled('▶', Style.CYAN)} Switch to this file as target? (y/n): ").strip().lower()
+            if switch == 'y':
+                self.target_workflow = path
+                self.original_content = copy.deepcopy(self.workflow_content)
+                print(f"  {styled('✓', Style.GREEN)} Now targeting: {path}")
 
         input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
 
