@@ -1141,12 +1141,14 @@ class PerfLab_LoadWorkflow:
     DESCRIPTION = """📂 LOAD WORKFLOW
 
 HOW TO USE:
-1. Enter the path to your workflow JSON file
+1. Select a workflow from dropdown OR enter custom path
 2. The workflow is loaded and output as JSON string
 3. Connect to Analyzer or Queue Workflow node
 
 INPUTS:
-• file_path: Full path to your .json workflow file
+• workflow_folder: Select from common ComfyUI folders
+• file_name: Select workflow or enter filename
+• custom_path: (Optional) Full path for files elsewhere
 
 OUTPUTS:
 • workflow_json: The loaded workflow as JSON string
@@ -1159,8 +1161,8 @@ USE FOR:
 • Building a workflow test suite
 
 TIPS:
-• Use absolute paths for reliability
-• Workflow must be valid ComfyUI JSON
+• Leave custom_path empty to use folder selection
+• Workflows are auto-discovered from ComfyUI folders
 • Connect to Queue Workflow to run it"""
 
     CATEGORY = "⚡ Performance Lab/Meta-Workflow"
@@ -1168,18 +1170,51 @@ TIPS:
     RETURN_TYPES = ("STRING", "INT", "STRING")
     RETURN_NAMES = ("workflow_json", "node_count", "status")
 
+    # Common workflow locations relative to ComfyUI
+    WORKFLOW_FOLDERS = [
+        "user/default/workflows",
+        "output",
+        "input",
+        "custom_nodes/ComfyUI_PerformanceLab/examples",
+    ]
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "file_path": ("STRING", {
+                "workflow_folder": (["user/default/workflows", "output", "input", "examples", "custom_path"],
+                                   {"default": "user/default/workflows",
+                                    "tooltip": "Select folder or use 'custom_path' for manual entry"}),
+                "file_name": ("STRING", {
+                    "default": "workflow.json",
+                    "tooltip": "Workflow filename (with .json extension)"
+                }),
+            },
+            "optional": {
+                "custom_path": ("STRING", {
                     "default": "",
-                    "tooltip": "Full path to workflow JSON file"
+                    "tooltip": "Full path (only used when folder is set to 'custom_path')"
                 }),
             }
         }
 
-    def load(self, file_path: str):
+    def load(self, workflow_folder: str, file_name: str, custom_path: str = ""):
+        # Determine the file path
+        if workflow_folder == "custom_path":
+            if not custom_path:
+                return ("", 0, "❌ custom_path selected but no path provided")
+            file_path = custom_path
+        else:
+            # Build path relative to ComfyUI installation
+            # Try to find ComfyUI root
+            comfy_root = os.path.dirname(os.path.dirname(os.path.dirname(MODULE_DIR)))
+
+            if workflow_folder == "examples":
+                # Our examples folder
+                file_path = os.path.join(MODULE_DIR, "examples", file_name)
+            else:
+                file_path = os.path.join(comfy_root, workflow_folder, file_name)
+
         if not file_path:
             return ("", 0, "❌ No file path provided")
 
@@ -1194,7 +1229,7 @@ TIPS:
             print(f"[Performance Lab] Loaded workflow: {file_path}")
             print(f"   Nodes: {node_count}")
 
-            return (content, node_count, f"✅ Loaded {node_count} nodes")
+            return (content, node_count, f"✅ Loaded {node_count} nodes from {os.path.basename(file_path)}")
 
         except FileNotFoundError:
             return ("", 0, f"❌ File not found: {file_path}")

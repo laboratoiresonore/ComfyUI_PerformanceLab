@@ -327,7 +327,12 @@ Discover and monitor AI services on your network:
         └─→ [▶️ Queue Workflow] ─→ [📝 Show Text (status)]
 ```
 
-An example meta-workflow is included in `examples/test_workflow_runner.json`.
+### Master Workflow (Recommended)
+
+A **single unified workflow** with all features is included:
+- `examples/performance_lab_master.json`
+
+This workflow includes toggles for all modes - just load it and customize!
 
 ---
 
