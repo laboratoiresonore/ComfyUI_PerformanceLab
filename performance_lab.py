@@ -3152,24 +3152,39 @@ class PerformanceLab:
             if init == 'y':
                 try:
                     # Initialize git
+                    print(f"  {styled('⚙', Style.CYAN)} Initializing git...", end="", flush=True)
                     subprocess.run(["git", "init"], cwd=script_dir, check=True, capture_output=True)
+                    print(f" {styled('✓', Style.GREEN)}", flush=True)
+
                     # Add remote
+                    print(f"  {styled('⚙', Style.CYAN)} Adding GitHub remote...", end="", flush=True)
                     subprocess.run([
                         "git", "remote", "add", "origin",
                         "https://github.com/laboratoiresonore/ComfyUI_PerformanceLab.git"
                     ], cwd=script_dir, check=True, capture_output=True)
-                    # Fetch
-                    subprocess.run(["git", "fetch", "origin"], cwd=script_dir, check=True, capture_output=True)
-                    # Reset to origin/main
-                    subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=script_dir, check=True, capture_output=True)
+                    print(f" {styled('✓', Style.GREEN)}", flush=True)
 
-                    print(f"  {styled('✓', Style.GREEN)} Git initialized and synced with GitHub!")
+                    # Fetch (this can take a while)
+                    print(f"  {styled('⚙', Style.CYAN)} Fetching from GitHub (may take a moment)...", end="", flush=True)
+                    subprocess.run(["git", "fetch", "origin"], cwd=script_dir, check=True, capture_output=True, timeout=120)
+                    print(f" {styled('✓', Style.GREEN)}", flush=True)
+
+                    # Reset to origin/main
+                    print(f"  {styled('⚙', Style.CYAN)} Syncing to latest version...", end="", flush=True)
+                    subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=script_dir, check=True, capture_output=True)
+                    print(f" {styled('✓', Style.GREEN)}", flush=True)
+
+                    print(f"\n  {styled('✓ Installation successful!', Style.GREEN, Style.BOLD)}")
                     print(f"  {styled('Restart Performance Lab to use the new version.', Style.YELLOW)}")
 
+                except subprocess.TimeoutExpired:
+                    print(f"\n  {styled('✗ Timeout:', Style.RED)} Network operation took too long. Check your connection.")
                 except subprocess.CalledProcessError as e:
-                    print(f"  {styled('✗ Git error:', Style.RED)} {e}")
+                    print(f"\n  {styled('✗ Git error:', Style.RED)} {e}")
                 except FileNotFoundError:
-                    print(f"  {styled('✗ Git not found:', Style.RED)} Please install git first.")
+                    print(f"\n  {styled('✗ Git not found:', Style.RED)} Please install git first.")
+
+            input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
             return
 
         # Check current version
