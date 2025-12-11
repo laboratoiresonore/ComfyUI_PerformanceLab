@@ -1,6 +1,6 @@
 {
-  "last_node_id": 12,
-  "last_link_id": 10,
+  "last_node_id": 17,
+  "last_link_id": 13,
   "nodes": [
     {
       "id": 1,
@@ -30,7 +30,7 @@
         {"name": "timer", "type": "PERF_TIMER", "link": 1}
       ],
       "outputs": [
-        {"name": "report", "type": "STRING", "links": [2], "slot_index": 0},
+        {"name": "report", "type": "STRING", "links": [2, 9], "slot_index": 0},
         {"name": "duration_sec", "type": "FLOAT", "links": [], "slot_index": 1},
         {"name": "peak_vram_gb", "type": "FLOAT", "links": [], "slot_index": 2}
       ],
@@ -72,7 +72,7 @@
       ],
       "properties": {},
       "widgets_values": ["speed", "Claude"],
-      "title": "5. GENERATE AI PROMPT"
+      "title": "5. GENERATE AI PROMPT (Manual)"
     },
     {
       "id": 5,
@@ -234,6 +234,82 @@
       "properties": {},
       "widgets_values": [],
       "title": "Instructions & Tips"
+    },
+    {
+      "id": 14,
+      "type": "PerfLab_AutoOptimize",
+      "pos": [1280, 150],
+      "size": {"0": 300, "1": 260},
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {"name": "performance_report", "type": "STRING", "link": 9}
+      ],
+      "outputs": [
+        {"name": "suggested_steps", "type": "INT", "links": [], "slot_index": 0},
+        {"name": "suggested_resolution", "type": "INT", "links": [], "slot_index": 1},
+        {"name": "suggested_cfg", "type": "FLOAT", "links": [], "slot_index": 2},
+        {"name": "explanation", "type": "STRING", "links": [10], "slot_index": 3},
+        {"name": "raw_response", "type": "STRING", "links": [], "slot_index": 4}
+      ],
+      "properties": {},
+      "widgets_values": ["speed", 30, 1024, 7.0, "Unknown", "http://127.0.0.1:11434", "llama3.2"],
+      "title": "AUTO: LLM Optimization (Ollama)"
+    },
+    {
+      "id": 15,
+      "type": "PerfLab_ShowText",
+      "pos": [1280, 470],
+      "size": {"0": 300, "1": 180},
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 10}
+      ],
+      "outputs": [
+        {"name": "text", "type": "STRING", "links": [], "slot_index": 0}
+      ],
+      "properties": {},
+      "widgets_values": [],
+      "title": "LLM Suggestions & Explanation"
+    },
+    {
+      "id": 16,
+      "type": "PerfLab_ApplyOrRevert",
+      "pos": [1280, 700],
+      "size": {"0": 300, "1": 200},
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "outputs": [
+        {"name": "steps", "type": "INT", "links": [], "slot_index": 0},
+        {"name": "resolution", "type": "INT", "links": [], "slot_index": 1},
+        {"name": "cfg", "type": "FLOAT", "links": [], "slot_index": 2},
+        {"name": "comparison", "type": "STRING", "links": [11], "slot_index": 3}
+      ],
+      "properties": {},
+      "widgets_values": [false, 30, 1024, 7.0, 25, 768, 5.0, 0.0, 0.0, 0.0, 0.0],
+      "title": "DECIDE: Keep Changes or Revert"
+    },
+    {
+      "id": 17,
+      "type": "PerfLab_ShowText",
+      "pos": [1280, 950],
+      "size": {"0": 300, "1": 100},
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 11}
+      ],
+      "outputs": [
+        {"name": "text", "type": "STRING", "links": [], "slot_index": 0}
+      ],
+      "properties": {},
+      "widgets_values": [],
+      "title": "Comparison Summary"
     }
   ],
   "links": [
@@ -244,7 +320,10 @@
     [5, 6, 5, 7, 0, "STRING"],
     [6, 8, 3, 9, 0, "STRING"],
     [7, 10, 3, 11, 0, "STRING"],
-    [8, 12, 0, 13, 0, "STRING"]
+    [8, 12, 0, 13, 0, "STRING"],
+    [9, 2, 0, 14, 0, "STRING"],
+    [10, 14, 3, 15, 0, "STRING"],
+    [11, 16, 3, 17, 0, "STRING"]
   ],
   "groups": [
     {
@@ -258,7 +337,7 @@
       "color": "#555"
     },
     {
-      "title": "STEP 3-6: RUN → SEE RESULTS → GET AI SUGGESTIONS",
+      "title": "MANUAL: Generate Prompt → Copy to Claude/GPT",
       "bounding": [580, 100, 320, 740],
       "color": "#3a8"
     },
@@ -281,14 +360,19 @@
       "title": "🔄 ITERATE: Run → Check Results → Ask AI → Apply Changes → Repeat Until Satisfied!",
       "bounding": [580, 850, 320, 30],
       "color": "#f80"
+    },
+    {
+      "title": "🤖 AUTOMATED LLM (Ollama) - Requires: ollama serve",
+      "bounding": [1260, 100, 340, 920],
+      "color": "#8a3"
     }
   ],
   "config": {},
   "extra": {
     "info": {
-      "name": "Performance Lab - Complete Guide",
-      "description": "Iterative Workflow Optimization: 1) Add Timer at start 2) Build/paste your workflow 3) Connect final output to Report 4) Run & see results 5) Generate AI prompt 6) Copy to Claude/GPT 7) Apply suggestions 8) REPEAT until satisfied!",
-      "version": "1.0.0"
+      "name": "Performance Lab v0.8.0 - Complete Guide",
+      "description": "Two optimization paths: MANUAL (copy prompt to Claude/GPT) or AUTOMATED (Ollama local LLM). Run workflow → See results → Get suggestions → Apply → Test → Keep or Revert → Repeat!",
+      "version": "0.8.0"
     }
   },
   "version": 0.4
