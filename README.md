@@ -2,11 +2,11 @@
 
 **Make any ComfyUI workflow faster, use less VRAM, or produce better quality - with help from AI.**
 
-![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.4.0-orange)
+![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.4.2-orange)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                    ⚡ COMFYUI PERFORMANCE LAB v0.4 ⚡                         ║
+║                   ⚡ COMFYUI PERFORMANCE LAB v0.4.2 ⚡                        ║
 ║           Load → Test → Get AI Suggestions → Accept/Reject → Repeat          ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -45,7 +45,12 @@ If you have [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) insta
 3. Paste: `https://github.com/laboratoiresonore/ComfyUI_PerformanceLab`
 4. Click **OK** and restart ComfyUI
 
-Then run Performance Lab from your terminal:
+**After restart, you'll see:**
+- 5 new nodes in the **"Performance Lab"** category
+- A startup message in the console confirming installation
+
+**To use the full CLI:**
+
 ```bash
 cd ComfyUI/custom_nodes/ComfyUI_PerformanceLab
 python performance_lab.py
@@ -228,6 +233,30 @@ The `ComfyUI_NetworkServices` custom node pack includes:
 
 ---
 
+## ComfyUI Nodes (v0.4.2)
+
+After installation, find these nodes in the **"Performance Lab"** category:
+
+| Node | What It Does |
+|------|-------------|
+| **Performance Timer** | Place at start of workflow to begin timing |
+| **Performance Monitor** | Place at end to see duration and report |
+| **Workflow Analyzer** | Paste workflow JSON to get instant analysis |
+| **Show Metrics** | Display current VRAM, GPU info |
+| **Launch Performance Lab** | Open the full CLI in a terminal |
+
+### Example: Track Execution Time
+
+```
+[Performance Timer] → [Your Workflow...] → [Performance Monitor]
+        ↓                                          ↓
+   start_time ────────────────────────────→  (shows duration)
+```
+
+The monitor node will print execution time to the console and output it as a string.
+
+---
+
 ## Model Tuner
 
 Press **[M]** to auto-detect your model and apply optimal settings.
@@ -317,6 +346,21 @@ ComfyUI_PerformanceLab/
 ---
 
 ## Version History
+
+**v0.4.2** - ComfyUI Native Integration
+- Native ComfyUI nodes in "Performance Lab" category
+- Performance Timer & Monitor nodes for tracking execution time
+- Workflow Analyzer node for instant analysis
+- Show Metrics node for VRAM/GPU info
+- Launch Performance Lab node to open CLI
+- Before/After comparison table with % change
+- VRAM sparkline visualization
+- Black Image Diagnostic [X] menu option
+- Dynamic impact estimates in Quick Actions
+- Markdown report export
+- "Already tried" context in LLM prompts
+- Auto-queue after pasting mods
+- Improved GitHub install feedback
 
 **v0.4.0** - Multi-Machine Distributed Optimization
 - New [D] Distributed menu for multi-machine pipelines

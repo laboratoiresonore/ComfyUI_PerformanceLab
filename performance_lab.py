@@ -72,7 +72,7 @@ except ImportError:
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-VERSION = "0.4.0"
+VERSION = "0.4.2"
 MODS_DIR = "mods"
 COMFY_URL = "http://127.0.0.1:8188"
 SESSION_LOG = "session_history.json"
