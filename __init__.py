@@ -20,7 +20,7 @@ import re
 from typing import Dict, Any, List, Tuple, Optional
 
 # Version and metadata
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 __author__ = "Laboratoire Sonore"
 __description__ = "ComfyUI Performance Lab - Iterative workflow optimization with AI assistance"
 
@@ -954,237 +954,274 @@ EXAMPLE GOALS:
         return (prompt,)
 
 
-class PerfLab_LLMClient:
-    """LLM Client - Call Ollama, OpenAI, or compatible APIs directly."""
+# ═══════════════════════════════════════════════════════════════════════════════
+# LLM INTEGRATION NODES - User-Friendly Optimization Loop
+# ═══════════════════════════════════════════════════════════════════════════════
 
-    DESCRIPTION = """🤖 LLM CLIENT - CALL AI DIRECTLY
+# Import llm_enhancer for rich context (lazy import to avoid startup delay)
+_llm_enhancer = None
+
+def _get_llm_enhancer():
+    """Lazy load llm_enhancer module."""
+    global _llm_enhancer
+    if _llm_enhancer is None:
+        try:
+            from . import llm_enhancer as le
+            _llm_enhancer = le
+        except ImportError:
+            try:
+                import llm_enhancer as le
+                _llm_enhancer = le
+            except ImportError:
+                _llm_enhancer = None
+    return _llm_enhancer
+
+
+class PerfLab_SmartPrompt:
+    """Smart Prompt Generator - Creates rich, context-aware prompts for any LLM."""
+
+    DESCRIPTION = """🧠 SMART PROMPT - FULL CONTEXT FOR BETTER AI SUGGESTIONS
+
+This is the UPGRADED prompt generator that uses:
+• Your full workflow structure
+• Your GPU/VRAM specs
+• Available ComfyUI nodes
+• Performance history
+
+MUCH BETTER than basic prompts!
 
 HOW TO USE:
-1. Select your LLM provider (Ollama is free & local!)
-2. Enter your prompt or connect from Generate Prompt
-3. Get AI response directly in ComfyUI
+1. Connect your performance report
+2. Optionally add workflow JSON (from Load Workflow)
+3. Select your goal
+4. Copy the rich prompt to Claude, GPT, Gemini
 
-PROVIDERS:
-• Ollama (FREE, LOCAL): Install from ollama.com, run locally
-• OpenAI: Requires API key
-• Anthropic: Requires API key
-• Custom: Any OpenAI-compatible API
-
-DEFAULT (Ollama):
-• URL: http://127.0.0.1:11434
-• Model: llama3.2 (or mistral, codellama, etc.)
-
-OUTPUTS:
-• response: The LLM's response text
-• success: Whether the call succeeded"""
+WHY USE THIS:
+• AI gets full context about YOUR setup
+• Suggestions are specific to YOUR GPU
+• Knows what nodes YOU have installed
+• Remembers previous optimization attempts"""
 
     CATEGORY = "⚡ Performance Lab/LLM"
-    FUNCTION = "call_llm"
-    RETURN_TYPES = ("STRING", "BOOLEAN", "STRING")
-    RETURN_NAMES = ("response", "success", "status")
+    FUNCTION = "generate"
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("prompt", "system_specs")
     OUTPUT_NODE = True
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "prompt": ("STRING", {
-                    "multiline": True,
-                    "default": "Analyze this ComfyUI workflow and suggest optimizations.",
-                    "tooltip": "The prompt to send to the LLM"
-                }),
-                "provider": (["Ollama (Local)", "OpenAI", "Anthropic", "Custom"],
-                            {"default": "Ollama (Local)",
-                             "tooltip": "Ollama is FREE and runs locally!"}),
+                "goal": (["speed", "vram", "quality", "debug", "explain"],
+                        {"default": "speed",
+                         "tooltip": "What do you want to optimize for?"}),
             },
             "optional": {
-                "api_url": ("STRING", {
-                    "default": "http://127.0.0.1:11434",
-                    "tooltip": "API URL (Ollama: 11434, OpenAI: api.openai.com)"
+                "performance_report": ("STRING", {
+                    "forceInput": True,
+                    "tooltip": "Connect from Performance Report node"
                 }),
-                "model": ("STRING", {
-                    "default": "llama3.2",
-                    "tooltip": "Model name (Ollama: llama3.2, mistral, codellama)"
+                "workflow_json": ("STRING", {
+                    "forceInput": True,
+                    "tooltip": "Optional: Connect from Load Workflow for full analysis"
                 }),
-                "api_key": ("STRING", {
-                    "default": "",
-                    "tooltip": "API key (not needed for Ollama)"
-                }),
-                "system_prompt": ("STRING", {
+                "error_description": ("STRING", {
                     "multiline": True,
-                    "default": "You are a ComfyUI workflow optimization expert. Provide specific, actionable suggestions.",
-                    "tooltip": "System prompt to set AI behavior"
+                    "default": "",
+                    "tooltip": "For debug goal: describe your problem"
                 }),
-                "max_tokens": ("INT", {
-                    "default": 2048,
-                    "min": 100,
-                    "max": 8192,
-                    "tooltip": "Maximum response length"
+                "include_specs": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Include your GPU/VRAM specs in prompt"
                 }),
-                "temperature": ("FLOAT", {
-                    "default": 0.7,
-                    "min": 0.0,
-                    "max": 2.0,
-                    "step": 0.1,
-                    "tooltip": "Creativity (0=focused, 1+=creative)"
+                "include_nodes": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Include available nodes in prompt"
                 }),
             }
         }
 
-    def call_llm(self, prompt, provider, api_url="http://127.0.0.1:11434",
-                 model="llama3.2", api_key="", system_prompt="",
-                 max_tokens=2048, temperature=0.7):
+    def generate(self, goal, performance_report="", workflow_json="",
+                 error_description="", include_specs=True, include_nodes=True):
 
-        import urllib.request
-        import urllib.error
+        le = _get_llm_enhancer()
 
-        try:
-            if provider == "Ollama (Local)":
-                return self._call_ollama(api_url, model, prompt, system_prompt, max_tokens, temperature)
-            elif provider == "OpenAI":
-                return self._call_openai(api_key, model, prompt, system_prompt, max_tokens, temperature)
-            elif provider == "Anthropic":
-                return self._call_anthropic(api_key, model, prompt, system_prompt, max_tokens, temperature)
-            else:  # Custom - use OpenAI format
-                return self._call_openai_format(api_url, api_key, model, prompt, system_prompt, max_tokens, temperature)
-        except Exception as e:
-            error_msg = f"❌ LLM Error: {str(e)}"
-            print(f"[Performance Lab] {error_msg}")
-            return ("", False, error_msg)
+        # Build rich context
+        sections = []
 
-    def _call_ollama(self, api_url, model, prompt, system_prompt, max_tokens, temperature):
-        """Call Ollama API (local, free)."""
-        import urllib.request
+        # Header
+        sections.append(f"# ComfyUI Workflow Optimization Request")
+        sections.append(f"## Goal: {goal.upper()}")
+        sections.append("")
 
-        url = f"{api_url.rstrip('/')}/api/generate"
+        # System specs (GPU, VRAM, etc.)
+        system_specs = ""
+        if include_specs and le:
+            try:
+                specs = le.SystemSpecsCollector.collect()
+                system_specs = specs.to_llm_context()
+                sections.append(system_specs)
+            except Exception:
+                system_specs = "Could not collect system specs"
+                sections.append(f"System: {system_specs}")
+        elif include_specs:
+            # Fallback without llm_enhancer
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    gpu = torch.cuda.get_device_name(0)
+                    vram = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+                    system_specs = f"GPU: {gpu}\nVRAM: {vram:.1f} GB"
+                    sections.append(f"## System\n{system_specs}")
+            except:
+                pass
 
-        payload = {
-            "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "num_predict": max_tokens,
-                "temperature": temperature,
-            }
-        }
+        # Performance metrics
+        if performance_report:
+            sections.append("## Current Performance")
+            sections.append(performance_report)
+            sections.append("")
 
-        if system_prompt:
-            payload["system"] = system_prompt
+        # Error info (for debug)
+        if error_description:
+            sections.append("## Problem Description")
+            sections.append(error_description)
+            sections.append("")
 
-        data = json.dumps(payload).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        # Workflow structure
+        if workflow_json:
+            try:
+                workflow = json.loads(workflow_json) if isinstance(workflow_json, str) else workflow_json
 
-        try:
-            with urllib.request.urlopen(req, timeout=120) as response:
-                result = json.loads(response.read().decode('utf-8'))
-                text = result.get("response", "")
-                print(f"[Performance Lab] Ollama response received ({len(text)} chars)")
-                return (text, True, f"✅ Ollama ({model}): {len(text)} chars")
-        except urllib.error.URLError as e:
-            return ("", False, f"❌ Cannot connect to Ollama at {api_url}. Is it running?")
+                # Get node list
+                nodes = workflow.get('nodes', [])
+                node_types = [n.get('type', 'Unknown') for n in nodes]
 
-    def _call_openai(self, api_key, model, prompt, system_prompt, max_tokens, temperature):
-        """Call OpenAI API."""
-        return self._call_openai_format(
-            "https://api.openai.com/v1", api_key,
-            model or "gpt-4o-mini", prompt, system_prompt, max_tokens, temperature
-        )
+                sections.append("## Workflow Structure")
+                sections.append(f"Total nodes: {len(nodes)}")
+                sections.append(f"Node types: {', '.join(sorted(set(node_types)))}")
 
-    def _call_anthropic(self, api_key, model, prompt, system_prompt, max_tokens, temperature):
-        """Call Anthropic API."""
-        import urllib.request
+                # Include relevant nodes if llm_enhancer available
+                if include_nodes and le:
+                    try:
+                        catalog = le.NodeCatalog()
+                        catalog.fetch_catalog()
+                        relevant = catalog.export_workflow_relevant_nodes(workflow)
+                        sections.append("\n## Available Related Nodes")
+                        sections.append(relevant)
+                    except:
+                        pass
 
-        url = "https://api.anthropic.com/v1/messages"
+                # Include truncated workflow JSON
+                workflow_str = json.dumps(workflow, indent=2)
+                if len(workflow_str) > 3000:
+                    workflow_str = workflow_str[:3000] + "\n... (truncated)"
+                sections.append("\n## Workflow JSON")
+                sections.append(f"```json\n{workflow_str}\n```")
+            except json.JSONDecodeError:
+                sections.append("## Workflow")
+                sections.append("Could not parse workflow JSON")
 
-        messages = [{"role": "user", "content": prompt}]
+        # Goal-specific instructions
+        sections.append("\n## Instructions")
 
-        payload = {
-            "model": model or "claude-3-haiku-20240307",
-            "max_tokens": max_tokens,
-            "messages": messages,
-        }
+        if goal == "speed":
+            sections.append("""Optimize this workflow for SPEED. Suggest:
+1. Optimal step count (usually 15-25 is enough)
+2. Resolution adjustments
+3. Sampler changes (faster samplers)
+4. Any nodes that could be removed or bypassed
 
-        if system_prompt:
-            payload["system"] = system_prompt
+Respond with specific numbers and explain the trade-offs.""")
 
-        headers = {
-            "Content-Type": "application/json",
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01"
-        }
+        elif goal == "vram":
+            sections.append("""Optimize this workflow for LOW VRAM usage. Suggest:
+1. Resolution to fit in available VRAM
+2. Batch size changes
+3. Model precision (fp16/fp8)
+4. Tiled VAE settings
+5. Any memory-heavy nodes to replace
 
-        data = json.dumps(payload).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers=headers)
+Respond with specific values for my GPU.""")
 
-        with urllib.request.urlopen(req, timeout=120) as response:
-            result = json.loads(response.read().decode('utf-8'))
-            text = result.get("content", [{}])[0].get("text", "")
-            return (text, True, f"✅ Anthropic ({model}): {len(text)} chars")
+        elif goal == "quality":
+            sections.append("""Optimize this workflow for BEST QUALITY. Suggest:
+1. Optimal step count for quality
+2. Best CFG for this model
+3. Sampler recommendations
+4. Upscaling/refinement additions
+5. Any quality-improving nodes
 
-    def _call_openai_format(self, api_url, api_key, model, prompt, system_prompt, max_tokens, temperature):
-        """Call OpenAI-compatible API."""
-        import urllib.request
+Respond with specific settings and explain why.""")
 
-        url = f"{api_url.rstrip('/')}/chat/completions"
+        elif goal == "debug":
+            sections.append("""Debug this workflow. Find:
+1. Missing connections
+2. Invalid parameter values
+3. Incompatible node combinations
+4. Type mismatches
+5. The root cause of the problem
 
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+Explain the issue and provide a fix.""")
 
-        payload = {
-            "model": model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-        }
+        else:  # explain
+            sections.append("""Explain this workflow:
+1. What it does step by step
+2. Key parameters and their effects
+3. Bottlenecks and optimization opportunities
+4. How to modify it for different results
 
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
+Make it understandable for a beginner.""")
 
-        data = json.dumps(payload).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers=headers)
+        # Response format
+        sections.append("""
+## Response Format
+Please respond with:
+```
+STEPS: [number]
+RESOLUTION: [number]
+CFG: [number]
+EXPLANATION: [your detailed explanation]
+```""")
 
-        with urllib.request.urlopen(req, timeout=120) as response:
-            result = json.loads(response.read().decode('utf-8'))
-            text = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-            return (text, True, f"✅ {model}: {len(text)} chars")
+        prompt = "\n".join(sections)
+
+        print(f"[Performance Lab] Generated smart prompt ({len(prompt)} chars)")
+        print(f"  Goal: {goal}")
+        print(f"  Has workflow: {'Yes' if workflow_json else 'No'}")
+        print(f"  Has metrics: {'Yes' if performance_report else 'No'}")
+
+        return (prompt, system_specs)
 
 
-class PerfLab_AutoOptimize:
-    """Auto Optimize - Send performance data to LLM and get optimization suggestions."""
+class PerfLab_SmartOptimize:
+    """Smart Optimize - Uses full context to get better AI suggestions."""
 
-    DESCRIPTION = """🚀 AUTO OPTIMIZE - AI-POWERED SUGGESTIONS
+    DESCRIPTION = """🚀 SMART OPTIMIZE - THE BEST WAY TO GET AI SUGGESTIONS
 
-THE AUTOMATED OPTIMIZATION LOOP!
+This is the ULTIMATE optimization node that:
+• Uses your FULL workflow context
+• Knows your GPU specs
+• Calls the LLM with rich prompts
+• Returns ready-to-use values
+
+JUST CONNECT AND RUN!
 
 HOW TO USE:
-1. Connect your performance report
-2. Select optimization goal (speed/vram/quality)
-3. Run to get AI suggestions
-4. Apply suggestions and test
-5. Keep or reject based on results
-
-INPUTS:
-• performance_report: From Performance Report node
-• goal: What to optimize for
-• current values: Your current settings
+1. Connect performance report (required)
+2. Connect workflow JSON (optional but recommended)
+3. Select your goal
+4. Run → Get suggestions → Wire to your nodes
 
 OUTPUTS:
-• suggested_steps: Recommended step count
-• suggested_resolution: Recommended resolution
-• suggested_cfg: Recommended CFG
-• explanation: Why these changes help
-• raw_response: Full LLM response
-
-WORKFLOW:
-Run → Get Suggestions → Apply → Test → Keep/Reject → Repeat!"""
+• steps/resolution/cfg: Wire these directly to your nodes!
+• explanation: Why the AI suggests these changes
+• confidence: How confident the AI is (0-1)"""
 
     CATEGORY = "⚡ Performance Lab/LLM"
     FUNCTION = "optimize"
-    RETURN_TYPES = ("INT", "INT", "FLOAT", "STRING", "STRING")
-    RETURN_NAMES = ("suggested_steps", "suggested_resolution", "suggested_cfg", "explanation", "raw_response")
+    RETURN_TYPES = ("INT", "INT", "FLOAT", "STRING", "FLOAT", "STRING")
+    RETURN_NAMES = ("steps", "resolution", "cfg", "explanation", "confidence", "raw_response")
     OUTPUT_NODE = True
 
     @classmethod
@@ -1198,250 +1235,643 @@ Run → Get Suggestions → Apply → Test → Keep/Reject → Repeat!"""
             "optional": {
                 "performance_report": ("STRING", {
                     "forceInput": True,
-                    "tooltip": "Connect from Performance Report node"
+                    "tooltip": "Connect from Performance Report"
+                }),
+                "workflow_json": ("STRING", {
+                    "forceInput": True,
+                    "tooltip": "Connect from Load Workflow for better suggestions"
                 }),
                 "current_steps": ("INT", {
-                    "default": 30,
-                    "min": 1,
-                    "max": 150,
-                    "tooltip": "Your current step count"
+                    "default": 30, "min": 1, "max": 150,
+                    "tooltip": "Your current steps"
                 }),
                 "current_resolution": ("INT", {
-                    "default": 1024,
-                    "min": 256,
-                    "max": 4096,
+                    "default": 1024, "min": 256, "max": 4096,
                     "tooltip": "Your current resolution"
                 }),
                 "current_cfg": ("FLOAT", {
-                    "default": 7.0,
-                    "min": 0.0,
-                    "max": 30.0,
+                    "default": 7.0, "min": 0.0, "max": 30.0,
                     "tooltip": "Your current CFG"
                 }),
                 "model_type": (["SD 1.5", "SDXL", "SD3", "Flux Dev", "Flux Schnell", "Unknown"],
                               {"default": "Unknown",
-                               "tooltip": "Your model type (affects recommendations)"}),
-                "ollama_url": ("STRING", {
+                               "tooltip": "Your model type"}),
+                "llm_provider": (["Ollama (Local)", "OpenAI", "Anthropic"],
+                               {"default": "Ollama (Local)",
+                                "tooltip": "Which AI to use (Ollama is FREE)"}),
+                "llm_url": ("STRING", {
                     "default": "http://127.0.0.1:11434",
-                    "tooltip": "Ollama API URL"
+                    "tooltip": "LLM API URL"
                 }),
-                "ollama_model": ("STRING", {
+                "llm_model": ("STRING", {
                     "default": "llama3.2",
-                    "tooltip": "Ollama model to use"
+                    "tooltip": "Model to use"
+                }),
+                "api_key": ("STRING", {
+                    "default": "",
+                    "tooltip": "API key (only for OpenAI/Anthropic)"
                 }),
             }
         }
 
-    def optimize(self, goal, performance_report="", current_steps=30,
-                 current_resolution=1024, current_cfg=7.0, model_type="Unknown",
-                 ollama_url="http://127.0.0.1:11434", ollama_model="llama3.2"):
+    def optimize(self, goal, performance_report="", workflow_json="",
+                 current_steps=30, current_resolution=1024, current_cfg=7.0,
+                 model_type="Unknown", llm_provider="Ollama (Local)",
+                 llm_url="http://127.0.0.1:11434", llm_model="llama3.2", api_key=""):
 
-        # Build the optimization prompt
-        prompt = f"""Analyze this ComfyUI workflow performance and suggest optimizations.
+        import urllib.request
+        import urllib.error
 
-GOAL: {goal.upper()}
+        le = _get_llm_enhancer()
 
-CURRENT SETTINGS:
+        # Build context-rich prompt
+        prompt_parts = []
+
+        # System context
+        if le:
+            try:
+                specs = le.SystemSpecsCollector.collect()
+                prompt_parts.append(specs.to_llm_context())
+            except:
+                pass
+
+        # Current settings
+        prompt_parts.append(f"""## Current Settings
 - Steps: {current_steps}
 - Resolution: {current_resolution}
 - CFG: {current_cfg}
-- Model Type: {model_type}
+- Model: {model_type}
+""")
 
-PERFORMANCE DATA:
-{performance_report if performance_report else "No performance data yet"}
+        # Performance data
+        if performance_report:
+            prompt_parts.append(f"## Performance Data\n{performance_report}")
 
-Based on the goal of "{goal}", suggest SPECIFIC numeric values for:
-1. Steps (integer between 4-100)
-2. Resolution (integer, multiple of 8, between 256-2048)
-3. CFG (float between 0.5-20)
+        # Workflow analysis
+        if workflow_json:
+            try:
+                workflow = json.loads(workflow_json) if isinstance(workflow_json, str) else workflow_json
+                nodes = workflow.get('nodes', [])
+                prompt_parts.append(f"""## Workflow Analysis
+- Total nodes: {len(nodes)}
+- Types: {', '.join(sorted(set(n.get('type', '?') for n in nodes)))}
+""")
+            except:
+                pass
 
-IMPORTANT: Respond in this EXACT format:
-STEPS: [number]
-RESOLUTION: [number]
-CFG: [number]
-EXPLANATION: [brief explanation why]
+        # Goal and instructions
+        goal_instructions = {
+            "speed": "Make this FASTER. Minimize generation time while keeping acceptable quality.",
+            "vram": "Reduce VRAM usage. Make it run on GPUs with less memory.",
+            "quality": "Improve OUTPUT QUALITY. Better details, less artifacts.",
+            "balanced": "Balance speed, VRAM, and quality for everyday use."
+        }
 
-Example:
-STEPS: 20
-RESOLUTION: 768
-CFG: 7.0
-EXPLANATION: Reducing steps from 30 to 20 saves ~33% time with minimal quality loss. 768px is optimal for 8GB VRAM.
-"""
+        prompt_parts.append(f"""## Goal: {goal.upper()}
+{goal_instructions.get(goal, '')}
 
-        system_prompt = """You are a ComfyUI optimization expert. Given performance metrics and a goal, suggest specific numeric parameter changes.
+Based on my system and workflow, suggest SPECIFIC values.
 
-Key optimization rules:
-- For SPEED: Reduce steps (15-25 usually enough), lower resolution
-- For VRAM: Reduce resolution first (has quadratic effect), then batch size, use tiled VAE
-- For QUALITY: More steps (30-50), native resolution, appropriate CFG for model
-- Flux models need CFG 1-4, SD models need CFG 5-8
-- SD1.5 native: 512px, SDXL/Flux native: 1024px
+RESPOND IN THIS EXACT FORMAT:
+STEPS: [number between 4-100]
+RESOLUTION: [number, multiple of 8, between 256-2048]
+CFG: [number between 0.5-20]
+CONFIDENCE: [number between 0.0-1.0]
+EXPLANATION: [2-3 sentences explaining why]
+""")
 
-Always respond with EXACT numbers in the format requested."""
+        prompt = "\n".join(prompt_parts)
 
-        # Call Ollama
+        system_prompt = """You are a ComfyUI optimization expert. Analyze the user's workflow, system specs, and performance data.
+
+CRITICAL RULES:
+- Flux models: CFG must be 1.0-4.0
+- SD 1.5: native 512px, CFG 5-8
+- SDXL: native 1024px, CFG 5-8
+- For SPEED: fewer steps (15-25), lower resolution
+- For VRAM: lower resolution (quadratic memory impact)
+- For QUALITY: more steps (30-50), native resolution
+
+Always respond with EXACT numbers in the format requested.
+Include CONFIDENCE (0.0-1.0) based on how much context you have."""
+
+        # Call LLM
         try:
-            import urllib.request
+            if llm_provider == "Ollama (Local)":
+                response = self._call_ollama(llm_url, llm_model, prompt, system_prompt)
+            elif llm_provider == "OpenAI":
+                response = self._call_openai(api_key, llm_model, prompt, system_prompt)
+            elif llm_provider == "Anthropic":
+                response = self._call_anthropic(api_key, llm_model, prompt, system_prompt)
+            else:
+                response = ""
 
-            url = f"{ollama_url.rstrip('/')}/api/generate"
-            payload = {
-                "model": ollama_model,
-                "prompt": prompt,
-                "system": system_prompt,
-                "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 500}
-            }
-
-            data = json.dumps(payload).encode('utf-8')
-            req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-
-            with urllib.request.urlopen(req, timeout=60) as response:
-                result = json.loads(response.read().decode('utf-8'))
-                llm_response = result.get("response", "")
-
-            # Parse the response
+            # Parse response
             suggested_steps = current_steps
             suggested_resolution = current_resolution
             suggested_cfg = current_cfg
-            explanation = "Could not parse LLM response"
+            confidence = 0.5
+            explanation = "Could not parse response"
 
-            lines = llm_response.upper().split('\n')
+            lines = response.upper().split('\n')
             for line in lines:
-                if line.startswith('STEPS:'):
-                    try:
+                try:
+                    if line.startswith('STEPS:'):
                         suggested_steps = int(''.join(filter(str.isdigit, line.split(':')[1])))
-                    except:
-                        pass
-                elif line.startswith('RESOLUTION:'):
-                    try:
+                    elif line.startswith('RESOLUTION:'):
                         suggested_resolution = int(''.join(filter(str.isdigit, line.split(':')[1])))
-                    except:
-                        pass
-                elif line.startswith('CFG:'):
-                    try:
+                    elif line.startswith('CFG:'):
                         cfg_str = line.split(':')[1].strip()
                         suggested_cfg = float(''.join(c for c in cfg_str if c.isdigit() or c == '.'))
-                    except:
-                        pass
+                    elif line.startswith('CONFIDENCE:'):
+                        conf_str = line.split(':')[1].strip()
+                        confidence = float(''.join(c for c in conf_str if c.isdigit() or c == '.'))
+                except:
+                    pass
 
             # Extract explanation
-            if 'EXPLANATION:' in llm_response.upper():
-                explanation = llm_response.split('EXPLANATION:')[-1].split('xplanation:')[-1].strip()
+            if 'EXPLANATION:' in response.upper():
+                explanation = response.split('EXPLANATION:')[-1].split('xplanation:')[-1].strip()
+                explanation = explanation.split('\n')[0]  # First line only
 
-            # Clamp values to safe ranges
+            # Clamp to safe ranges
             suggested_steps = max(4, min(100, suggested_steps))
             suggested_resolution = max(256, min(2048, (suggested_resolution // 8) * 8))
             suggested_cfg = max(0.5, min(20.0, suggested_cfg))
+            confidence = max(0.0, min(1.0, confidence))
 
-            print(f"[Performance Lab] AutoOptimize suggestions:")
+            # Adjust CFG for Flux
+            if "Flux" in model_type:
+                suggested_cfg = min(suggested_cfg, 4.0)
+
+            print(f"[Performance Lab] SmartOptimize ({goal}):")
             print(f"  Steps: {current_steps} → {suggested_steps}")
             print(f"  Resolution: {current_resolution} → {suggested_resolution}")
             print(f"  CFG: {current_cfg} → {suggested_cfg}")
+            print(f"  Confidence: {confidence:.0%}")
 
-            return (suggested_steps, suggested_resolution, suggested_cfg, explanation, llm_response)
+            return (suggested_steps, suggested_resolution, suggested_cfg, explanation, confidence, response)
 
         except urllib.error.URLError:
-            explanation = "❌ Cannot connect to Ollama. Make sure it's running (ollama serve)"
-            return (current_steps, current_resolution, current_cfg, explanation, "Connection failed")
+            msg = f"Cannot connect to {llm_provider}. Is it running?"
+            print(f"[Performance Lab] {msg}")
+            return (current_steps, current_resolution, current_cfg, msg, 0.0, "Connection failed")
         except Exception as e:
-            explanation = f"❌ Error: {str(e)}"
-            return (current_steps, current_resolution, current_cfg, explanation, str(e))
+            msg = f"Error: {str(e)}"
+            print(f"[Performance Lab] {msg}")
+            return (current_steps, current_resolution, current_cfg, msg, 0.0, str(e))
+
+    def _call_ollama(self, url, model, prompt, system_prompt):
+        import urllib.request
+        payload = {
+            "model": model,
+            "prompt": prompt,
+            "system": system_prompt,
+            "stream": False,
+            "options": {"temperature": 0.3, "num_predict": 500}
+        }
+        req = urllib.request.Request(
+            f"{url.rstrip('/')}/api/generate",
+            data=json.dumps(payload).encode('utf-8'),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=60) as response:
+            return json.loads(response.read().decode('utf-8')).get("response", "")
+
+    def _call_openai(self, api_key, model, prompt, system_prompt):
+        import urllib.request
+        payload = {
+            "model": model or "gpt-4o-mini",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 500,
+            "temperature": 0.3
+        }
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(payload).encode('utf-8'),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+        )
+        with urllib.request.urlopen(req, timeout=60) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            return result.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+    def _call_anthropic(self, api_key, model, prompt, system_prompt):
+        import urllib.request
+        payload = {
+            "model": model or "claude-3-haiku-20240307",
+            "max_tokens": 500,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": prompt}]
+        }
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=json.dumps(payload).encode('utf-8'),
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=60) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            return result.get("content", [{}])[0].get("text", "")
 
 
-class PerfLab_ApplyOrRevert:
-    """Apply or Revert - Compare results and decide to keep or reject changes."""
+class PerfLab_IterationTracker:
+    """Track optimization rounds and show cumulative progress."""
 
-    DESCRIPTION = """✅❌ APPLY OR REVERT
+    DESCRIPTION = """📊 ITERATION TRACKER - SEE YOUR PROGRESS!
 
-COMPARE BEFORE/AFTER AND DECIDE!
+Track multiple optimization rounds and show:
+• Current round number
+• Improvement from start
+• Best result so far
+• When to stop optimizing
 
 HOW TO USE:
-1. Connect your BEFORE results (original)
-2. Connect your AFTER results (with optimization)
-3. Set keep_changes based on results
-4. Output goes to your workflow
-
-This is the DECISION node in the optimization loop:
-• If AFTER is better → keep_changes = TRUE → use new values
-• If AFTER is worse → keep_changes = FALSE → use original values
+1. Connect duration from Performance Report
+2. Set your round number (1, 2, 3...)
+3. See cumulative improvement
 
 OUTPUTS:
-• The values based on your decision
-• comparison: Shows the improvement/regression"""
+• round_number: Current round
+• total_improvement: % faster than round 1
+• should_continue: TRUE if more optimization might help
+• progress_report: Full history"""
 
     CATEGORY = "⚡ Performance Lab/LLM"
-    FUNCTION = "decide"
-    RETURN_TYPES = ("INT", "INT", "FLOAT", "STRING")
-    RETURN_NAMES = ("steps", "resolution", "cfg", "comparison")
+    FUNCTION = "track"
+    RETURN_TYPES = ("INT", "FLOAT", "BOOLEAN", "STRING")
+    RETURN_NAMES = ("round_number", "total_improvement_pct", "should_continue", "progress_report")
     OUTPUT_NODE = True
+
+    # Class variable to persist history within session
+    _history = []
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "keep_changes": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "TRUE = use new values, FALSE = use original"
+                "round_number": ("INT", {
+                    "default": 1, "min": 1, "max": 99,
+                    "tooltip": "Which optimization round is this?"
                 }),
-                "original_steps": ("INT", {"default": 30, "min": 1, "max": 150}),
-                "original_resolution": ("INT", {"default": 1024, "min": 256, "max": 4096}),
-                "original_cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 30.0}),
-                "new_steps": ("INT", {"default": 20, "min": 1, "max": 150}),
-                "new_resolution": ("INT", {"default": 768, "min": 256, "max": 4096}),
-                "new_cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 30.0}),
+                "current_duration": ("FLOAT", {
+                    "default": 0.0, "min": 0.0,
+                    "tooltip": "Connect from Performance Report duration"
+                }),
             },
             "optional": {
-                "before_duration": ("FLOAT", {"default": 0.0, "tooltip": "Duration before optimization"}),
-                "after_duration": ("FLOAT", {"default": 0.0, "tooltip": "Duration after optimization"}),
-                "before_vram": ("FLOAT", {"default": 0.0, "tooltip": "VRAM before"}),
-                "after_vram": ("FLOAT", {"default": 0.0, "tooltip": "VRAM after"}),
+                "current_vram": ("FLOAT", {
+                    "default": 0.0, "min": 0.0,
+                    "tooltip": "VRAM usage for this round"
+                }),
+                "current_steps": ("INT", {
+                    "default": 30, "min": 1,
+                    "tooltip": "Steps used this round"
+                }),
+                "current_resolution": ("INT", {
+                    "default": 1024, "min": 256,
+                    "tooltip": "Resolution used this round"
+                }),
+                "reset_history": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Clear history and start fresh"
+                }),
+                "min_improvement_pct": ("FLOAT", {
+                    "default": 5.0, "min": 0.0, "max": 50.0,
+                    "tooltip": "Stop if improvement < this %"
+                }),
             }
         }
 
-    def decide(self, keep_changes, original_steps, original_resolution, original_cfg,
-               new_steps, new_resolution, new_cfg,
-               before_duration=0.0, after_duration=0.0, before_vram=0.0, after_vram=0.0):
+    def track(self, round_number, current_duration, current_vram=0.0,
+              current_steps=30, current_resolution=1024,
+              reset_history=False, min_improvement_pct=5.0):
 
-        # Calculate changes
-        if before_duration > 0 and after_duration > 0:
-            speed_change = ((after_duration - before_duration) / before_duration) * 100
-            speed_str = f"{speed_change:+.1f}%"
-            speed_verdict = "🟢 Faster!" if speed_change < 0 else "🔴 Slower"
+        # Reset if requested or if round is 1
+        if reset_history or round_number == 1:
+            PerfLab_IterationTracker._history = []
+
+        # Store this round
+        round_data = {
+            'round': round_number,
+            'duration': current_duration,
+            'vram': current_vram,
+            'steps': current_steps,
+            'resolution': current_resolution
+        }
+
+        # Update or append
+        if len(PerfLab_IterationTracker._history) >= round_number:
+            PerfLab_IterationTracker._history[round_number - 1] = round_data
         else:
-            speed_str = "N/A"
-            speed_verdict = ""
+            PerfLab_IterationTracker._history.append(round_data)
 
-        if before_vram > 0 and after_vram > 0:
-            vram_change = ((after_vram - before_vram) / before_vram) * 100
-            vram_str = f"{vram_change:+.1f}%"
-            vram_verdict = "🟢 Less VRAM" if vram_change < 0 else "🔴 More VRAM"
+        # Calculate stats
+        history = PerfLab_IterationTracker._history
+
+        if len(history) == 0 or history[0]['duration'] == 0:
+            total_improvement = 0.0
         else:
-            vram_str = "N/A"
-            vram_verdict = ""
+            baseline = history[0]['duration']
+            total_improvement = ((baseline - current_duration) / baseline) * 100
 
-        decision = "✅ KEEPING NEW VALUES" if keep_changes else "❌ REVERTING TO ORIGINAL"
+        # Determine if should continue
+        should_continue = True
+        if len(history) >= 2:
+            prev = history[-2]['duration']
+            if prev > 0:
+                last_improvement = ((prev - current_duration) / prev) * 100
+                should_continue = last_improvement >= min_improvement_pct
 
-        comparison = f"""═══ Optimization Decision ═══
+        # Build report
+        lines = ["╔══════════════════════════════════════╗"]
+        lines.append(f"║  OPTIMIZATION PROGRESS - ROUND {round_number:<2}    ║")
+        lines.append("╠══════════════════════════════════════╣")
 
-{decision}
+        for i, r in enumerate(history):
+            if i == 0:
+                lines.append(f"║  Round 1 (baseline): {r['duration']:.2f}s")
+            else:
+                baseline = history[0]['duration']
+                if baseline > 0:
+                    imp = ((baseline - r['duration']) / baseline) * 100
+                    emoji = "🟢" if imp > 0 else "🔴"
+                    lines.append(f"║  Round {r['round']}: {r['duration']:.2f}s ({emoji} {imp:+.1f}%)")
+                else:
+                    lines.append(f"║  Round {r['round']}: {r['duration']:.2f}s")
 
-PERFORMANCE COMPARISON:
-• Duration: {before_duration:.2f}s → {after_duration:.2f}s ({speed_str}) {speed_verdict}
-• VRAM: {before_vram:.2f}GB → {after_vram:.2f}GB ({vram_str}) {vram_verdict}
+        lines.append("╠══════════════════════════════════════╣")
+        lines.append(f"║  TOTAL IMPROVEMENT: {total_improvement:+.1f}%")
 
-SETTINGS:
-• Steps: {original_steps} → {new_steps}
-• Resolution: {original_resolution} → {new_resolution}
-• CFG: {original_cfg} → {new_cfg}
-
-OUTPUT: {'New values' if keep_changes else 'Original values'}"""
-
-        print(f"[Performance Lab] {decision}")
-
-        if keep_changes:
-            return (new_steps, new_resolution, new_cfg, comparison)
+        if should_continue and len(history) < 5:
+            lines.append("║  STATUS: 🟢 Keep optimizing!")
+        elif not should_continue:
+            lines.append("║  STATUS: ⭐ Diminishing returns - stop here")
         else:
-            return (original_steps, original_resolution, original_cfg, comparison)
+            lines.append("║  STATUS: ⚠️ 5+ rounds - consider stopping")
+
+        lines.append("╚══════════════════════════════════════╝")
+
+        progress_report = "\n".join(lines)
+
+        print(f"[Performance Lab] Round {round_number}: {current_duration:.2f}s (total: {total_improvement:+.1f}%)")
+
+        return (round_number, total_improvement, should_continue, progress_report)
+
+
+class PerfLab_OptimizationLoop:
+    """One node that does the complete optimization loop."""
+
+    DESCRIPTION = """🔄 OPTIMIZATION LOOP - EVERYTHING IN ONE NODE!
+
+THE EASIEST WAY TO OPTIMIZE!
+
+This single node:
+1. Takes your performance data
+2. Calls the AI for suggestions
+3. Tracks your progress
+4. Tells you when to stop
+
+JUST CONNECT AND RUN REPEATEDLY!
+
+HOW TO USE:
+1. Connect Performance Report duration
+2. Set your round number (increase each run)
+3. Run → Get suggestions → Apply → Run again
+
+WIRE THE OUTPUTS:
+• steps → your KSampler
+• resolution → your EmptyLatentImage
+• cfg → your KSampler
+
+RUN UNTIL should_stop = TRUE"""
+
+    CATEGORY = "⚡ Performance Lab/LLM"
+    FUNCTION = "optimize_loop"
+    RETURN_TYPES = ("INT", "INT", "FLOAT", "BOOLEAN", "STRING", "STRING")
+    RETURN_NAMES = ("steps", "resolution", "cfg", "should_stop", "explanation", "progress")
+    OUTPUT_NODE = True
+
+    # Persist best values
+    _best = {'steps': 30, 'resolution': 1024, 'cfg': 7.0, 'duration': float('inf')}
+    _history = []
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "round_number": ("INT", {
+                    "default": 1, "min": 1, "max": 99,
+                    "tooltip": "Increase this each time you run"
+                }),
+                "goal": (["speed", "vram", "quality", "balanced"],
+                        {"default": "speed"}),
+                "current_duration": ("FLOAT", {
+                    "default": 0.0, "min": 0.0,
+                    "tooltip": "Connect from Performance Report"
+                }),
+            },
+            "optional": {
+                "current_vram": ("FLOAT", {"default": 0.0}),
+                "current_steps": ("INT", {"default": 30, "min": 1, "max": 150}),
+                "current_resolution": ("INT", {"default": 1024, "min": 256, "max": 4096}),
+                "current_cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 30.0}),
+                "model_type": (["SD 1.5", "SDXL", "SD3", "Flux Dev", "Flux Schnell", "Unknown"],
+                              {"default": "Unknown"}),
+                "ollama_url": ("STRING", {"default": "http://127.0.0.1:11434"}),
+                "ollama_model": ("STRING", {"default": "llama3.2"}),
+                "max_rounds": ("INT", {"default": 5, "min": 1, "max": 20}),
+                "min_improvement_pct": ("FLOAT", {"default": 5.0, "min": 0.0, "max": 50.0}),
+            }
+        }
+
+    def optimize_loop(self, round_number, goal, current_duration,
+                      current_vram=0.0, current_steps=30, current_resolution=1024,
+                      current_cfg=7.0, model_type="Unknown",
+                      ollama_url="http://127.0.0.1:11434", ollama_model="llama3.2",
+                      max_rounds=5, min_improvement_pct=5.0):
+
+        import urllib.request
+        import urllib.error
+
+        # Reset on round 1
+        if round_number == 1:
+            PerfLab_OptimizationLoop._history = []
+            PerfLab_OptimizationLoop._best = {
+                'steps': current_steps,
+                'resolution': current_resolution,
+                'cfg': current_cfg,
+                'duration': current_duration
+            }
+
+        # Record this round
+        round_data = {
+            'round': round_number,
+            'duration': current_duration,
+            'vram': current_vram,
+            'steps': current_steps,
+            'resolution': current_resolution,
+            'cfg': current_cfg
+        }
+
+        if len(PerfLab_OptimizationLoop._history) >= round_number:
+            PerfLab_OptimizationLoop._history[round_number - 1] = round_data
+        else:
+            PerfLab_OptimizationLoop._history.append(round_data)
+
+        # Update best if this is better
+        best = PerfLab_OptimizationLoop._best
+        if current_duration > 0 and current_duration < best['duration']:
+            best['duration'] = current_duration
+            best['steps'] = current_steps
+            best['resolution'] = current_resolution
+            best['cfg'] = current_cfg
+
+        # Calculate improvement
+        history = PerfLab_OptimizationLoop._history
+        baseline = history[0]['duration'] if history else current_duration
+        total_improvement = 0.0
+        if baseline > 0:
+            total_improvement = ((baseline - current_duration) / baseline) * 100
+
+        # Check if should stop
+        should_stop = False
+        stop_reason = ""
+
+        if round_number >= max_rounds:
+            should_stop = True
+            stop_reason = f"Reached max rounds ({max_rounds})"
+        elif len(history) >= 2:
+            prev = history[-2]['duration']
+            if prev > 0:
+                last_imp = ((prev - current_duration) / prev) * 100
+                if last_imp < min_improvement_pct:
+                    should_stop = True
+                    stop_reason = f"Improvement < {min_improvement_pct}%"
+
+        # Generate next suggestions (only if not stopping)
+        suggested_steps = current_steps
+        suggested_resolution = current_resolution
+        suggested_cfg = current_cfg
+        explanation = ""
+
+        if not should_stop:
+            try:
+                # Build history context
+                history_str = "\n".join([
+                    f"Round {r['round']}: {r['duration']:.2f}s, steps={r['steps']}, res={r['resolution']}, cfg={r['cfg']}"
+                    for r in history
+                ])
+
+                prompt = f"""You are optimizing a ComfyUI workflow for {goal.upper()}.
+
+OPTIMIZATION HISTORY:
+{history_str}
+
+CURRENT (Round {round_number}):
+- Duration: {current_duration:.2f}s
+- VRAM: {current_vram:.2f}GB
+- Steps: {current_steps}
+- Resolution: {current_resolution}
+- CFG: {current_cfg}
+- Model: {model_type}
+
+BEST SO FAR: {best['duration']:.2f}s at steps={best['steps']}, res={best['resolution']}
+
+Based on this history, suggest the NEXT values to try.
+
+RESPOND EXACTLY:
+STEPS: [number]
+RESOLUTION: [number]
+CFG: [number]
+EXPLANATION: [why]"""
+
+                # Call Ollama
+                payload = {
+                    "model": ollama_model,
+                    "prompt": prompt,
+                    "system": "You are a ComfyUI optimizer. Give specific numeric suggestions based on the history shown.",
+                    "stream": False,
+                    "options": {"temperature": 0.3, "num_predict": 300}
+                }
+
+                req = urllib.request.Request(
+                    f"{ollama_url.rstrip('/')}/api/generate",
+                    data=json.dumps(payload).encode('utf-8'),
+                    headers={"Content-Type": "application/json"}
+                )
+
+                with urllib.request.urlopen(req, timeout=60) as response:
+                    result = json.loads(response.read().decode('utf-8'))
+                    llm_response = result.get("response", "")
+
+                # Parse
+                for line in llm_response.upper().split('\n'):
+                    try:
+                        if line.startswith('STEPS:'):
+                            suggested_steps = int(''.join(filter(str.isdigit, line.split(':')[1])))
+                        elif line.startswith('RESOLUTION:'):
+                            suggested_resolution = int(''.join(filter(str.isdigit, line.split(':')[1])))
+                        elif line.startswith('CFG:'):
+                            cfg_str = line.split(':')[1].strip()
+                            suggested_cfg = float(''.join(c for c in cfg_str if c.isdigit() or c == '.'))
+                    except:
+                        pass
+
+                if 'EXPLANATION:' in llm_response.upper():
+                    explanation = llm_response.split('EXPLANATION:')[-1].strip().split('\n')[0]
+
+                # Clamp
+                suggested_steps = max(4, min(100, suggested_steps))
+                suggested_resolution = max(256, min(2048, (suggested_resolution // 8) * 8))
+                suggested_cfg = max(0.5, min(20.0, suggested_cfg))
+
+                if "Flux" in model_type:
+                    suggested_cfg = min(suggested_cfg, 4.0)
+
+            except Exception as e:
+                explanation = f"LLM Error: {str(e)} - Using current values"
+
+        # Build progress report
+        progress_lines = [
+            "═══════════════════════════════════════",
+            f"  OPTIMIZATION LOOP - Round {round_number}/{max_rounds}",
+            "═══════════════════════════════════════"
+        ]
+
+        for r in history:
+            imp = ((baseline - r['duration']) / baseline * 100) if baseline > 0 else 0
+            emoji = "🟢" if imp > 0 else "🔴" if imp < 0 else "⚪"
+            progress_lines.append(f"  Round {r['round']}: {r['duration']:.2f}s ({emoji} {imp:+.1f}%)")
+
+        progress_lines.append("───────────────────────────────────────")
+        progress_lines.append(f"  BEST: {best['duration']:.2f}s (Round {next((r['round'] for r in history if r['duration'] == best['duration']), '?')})")
+        progress_lines.append(f"  TOTAL IMPROVEMENT: {total_improvement:+.1f}%")
+        progress_lines.append("───────────────────────────────────────")
+
+        if should_stop:
+            progress_lines.append(f"  ⭐ DONE! {stop_reason}")
+            progress_lines.append(f"  FINAL: steps={best['steps']}, res={best['resolution']}, cfg={best['cfg']}")
+        else:
+            progress_lines.append(f"  🔄 NEXT: steps={suggested_steps}, res={suggested_resolution}, cfg={suggested_cfg}")
+            progress_lines.append(f"  💡 {explanation[:60]}..." if len(explanation) > 60 else f"  💡 {explanation}")
+
+        progress_lines.append("═══════════════════════════════════════")
+
+        progress = "\n".join(progress_lines)
+
+        print(f"[Performance Lab] Round {round_number}: {current_duration:.2f}s → suggesting {suggested_steps}/{suggested_resolution}/{suggested_cfg}")
+
+        # Return best values if stopping, otherwise suggestions
+        if should_stop:
+            return (best['steps'], best['resolution'], best['cfg'], should_stop, stop_reason, progress)
+        else:
+            return (suggested_steps, suggested_resolution, suggested_cfg, should_stop, explanation, progress)
 
 
 class PerfLab_ShowText:
@@ -2578,11 +3008,12 @@ NODE_CLASS_MAPPINGS = {
     "PerfLab_BlackImageFix": PerfLab_BlackImageFix,
     "PerfLab_Compare": PerfLab_Compare,
 
-    # LLM
+    # LLM (Automated Optimization)
     "PerfLab_GeneratePrompt": PerfLab_GeneratePrompt,
-    "PerfLab_LLMClient": PerfLab_LLMClient,
-    "PerfLab_AutoOptimize": PerfLab_AutoOptimize,
-    "PerfLab_ApplyOrRevert": PerfLab_ApplyOrRevert,
+    "PerfLab_SmartPrompt": PerfLab_SmartPrompt,
+    "PerfLab_SmartOptimize": PerfLab_SmartOptimize,
+    "PerfLab_IterationTracker": PerfLab_IterationTracker,
+    "PerfLab_OptimizationLoop": PerfLab_OptimizationLoop,
 
     # Utility
     "PerfLab_ShowText": PerfLab_ShowText,
@@ -2626,11 +3057,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PerfLab_BlackImageFix": "🔧 Black Image Fix",
     "PerfLab_Compare": "📊 Compare Results",
 
-    # LLM
-    "PerfLab_GeneratePrompt": "🤖 Generate LLM Prompt",
-    "PerfLab_LLMClient": "🤖 LLM Client",
-    "PerfLab_AutoOptimize": "🤖 Auto Optimize (LLM)",
-    "PerfLab_ApplyOrRevert": "✅ Apply or Revert",
+    # LLM (Automated Optimization - ⭐ USER FRIENDLY!)
+    "PerfLab_GeneratePrompt": "🤖 Generate Prompt (Basic)",
+    "PerfLab_SmartPrompt": "🧠 Smart Prompt (Rich Context)",
+    "PerfLab_SmartOptimize": "🚀 Smart Optimize",
+    "PerfLab_IterationTracker": "📊 Iteration Tracker",
+    "PerfLab_OptimizationLoop": "🔄 Optimization Loop (All-in-One)",
 
     # Utility
     "PerfLab_ShowText": "📝 Show Text",

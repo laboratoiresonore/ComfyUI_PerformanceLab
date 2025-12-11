@@ -1,6 +1,6 @@
 {
-  "last_node_id": 17,
-  "last_link_id": 13,
+  "last_node_id": 15,
+  "last_link_id": 12,
   "nodes": [
     {
       "id": 1,
@@ -15,7 +15,7 @@
       ],
       "properties": {},
       "widgets_values": [],
-      "title": "1. START HERE - Timer"
+      "title": "1. START: Timer"
     },
     {
       "id": 2,
@@ -30,13 +30,13 @@
         {"name": "timer", "type": "PERF_TIMER", "link": 1}
       ],
       "outputs": [
-        {"name": "report", "type": "STRING", "links": [2, 9], "slot_index": 0},
-        {"name": "duration_sec", "type": "FLOAT", "links": [], "slot_index": 1},
+        {"name": "report", "type": "STRING", "links": [2], "slot_index": 0},
+        {"name": "duration_sec", "type": "FLOAT", "links": [7], "slot_index": 1},
         {"name": "peak_vram_gb", "type": "FLOAT", "links": [], "slot_index": 2}
       ],
       "properties": {},
       "widgets_values": ["My Workflow"],
-      "title": "3. CONNECT YOUR FINAL OUTPUT TO 'trigger'"
+      "title": "3. END: Get Report"
     },
     {
       "id": 3,
@@ -50,47 +50,52 @@
         {"name": "text", "type": "STRING", "link": 2}
       ],
       "outputs": [
-        {"name": "text", "type": "STRING", "links": [3], "slot_index": 0}
+        {"name": "text", "type": "STRING", "links": [], "slot_index": 0}
       ],
       "properties": {},
       "widgets_values": [],
-      "title": "4. SEE YOUR RESULTS HERE"
+      "title": "Performance Results"
     },
     {
       "id": 4,
-      "type": "PerfLab_GeneratePrompt",
-      "pos": [600, 480],
-      "size": {"0": 280, "1": 120},
+      "type": "PerfLab_OptimizationLoop",
+      "pos": [950, 150],
+      "size": {"0": 340, "1": 380},
       "flags": {},
       "order": 3,
       "mode": 0,
       "inputs": [
-        {"name": "performance_report", "type": "STRING", "link": 3}
+        {"name": "current_duration", "type": "FLOAT", "link": 7}
       ],
       "outputs": [
-        {"name": "prompt", "type": "STRING", "links": [4], "slot_index": 0}
+        {"name": "steps", "type": "INT", "links": [], "slot_index": 0, "label": "→ KSampler"},
+        {"name": "resolution", "type": "INT", "links": [], "slot_index": 1, "label": "→ EmptyLatent"},
+        {"name": "cfg", "type": "FLOAT", "links": [], "slot_index": 2, "label": "→ KSampler"},
+        {"name": "should_stop", "type": "BOOLEAN", "links": [], "slot_index": 3},
+        {"name": "explanation", "type": "STRING", "links": [], "slot_index": 4},
+        {"name": "progress", "type": "STRING", "links": [8], "slot_index": 5}
       ],
       "properties": {},
-      "widgets_values": ["speed", "Claude"],
-      "title": "5. GENERATE AI PROMPT (Manual)"
+      "widgets_values": [1, "speed", "http://127.0.0.1:11434", "llama3.2", 5, 5.0],
+      "title": "⭐ OPTIMIZATION LOOP (All-in-One)"
     },
     {
       "id": 5,
       "type": "PerfLab_ShowText",
-      "pos": [600, 660],
-      "size": {"0": 280, "1": 150},
+      "pos": [950, 580],
+      "size": {"0": 340, "1": 200},
       "flags": {},
       "order": 4,
       "mode": 0,
       "inputs": [
-        {"name": "text", "type": "STRING", "link": 4}
+        {"name": "text", "type": "STRING", "link": 8}
       ],
       "outputs": [
         {"name": "text", "type": "STRING", "links": [], "slot_index": 0}
       ],
       "properties": {},
       "widgets_values": [],
-      "title": "6. COPY THIS PROMPT TO CLAUDE/GPT"
+      "title": "Optimization Progress"
     },
     {
       "id": 6,
@@ -110,7 +115,7 @@
       ],
       "properties": {},
       "widgets_values": [true, 1024, 1024, 30, 7.0, 1, 512, 15],
-      "title": "OPTIMIZE: Toggle test_mode ON/OFF"
+      "title": "Quick: Test/Production Toggle"
     },
     {
       "id": 7,
@@ -128,12 +133,12 @@
       ],
       "properties": {},
       "widgets_values": [],
-      "title": "Current Mode Status"
+      "title": "Current Mode"
     },
     {
       "id": 8,
       "type": "PerfLab_AutoDetectGPU",
-      "pos": [950, 150],
+      "pos": [1350, 150],
       "size": {"0": 260, "1": 110},
       "flags": {},
       "order": 7,
@@ -146,12 +151,12 @@
       ],
       "properties": {},
       "widgets_values": [],
-      "title": "GPU INFO: Auto-detected"
+      "title": "Your GPU Info"
     },
     {
       "id": 9,
       "type": "PerfLab_ShowText",
-      "pos": [950, 320],
+      "pos": [1350, 320],
       "size": {"0": 260, "1": 150},
       "flags": {},
       "order": 8,
@@ -164,106 +169,64 @@
       ],
       "properties": {},
       "widgets_values": [],
-      "title": "Your GPU Specs"
+      "title": "GPU Specs"
     },
     {
       "id": 10,
-      "type": "PerfLab_ModelDetector",
-      "pos": [950, 530],
-      "size": {"0": 260, "1": 80},
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "outputs": [
-        {"name": "model_type", "type": "STRING", "links": [], "slot_index": 0},
-        {"name": "optimal_cfg", "type": "FLOAT", "links": [], "slot_index": 1},
-        {"name": "optimal_resolution", "type": "INT", "links": [], "slot_index": 2},
-        {"name": "info", "type": "STRING", "links": [7], "slot_index": 3}
-      ],
-      "properties": {},
-      "widgets_values": ["your_model.safetensors"],
-      "title": "MODEL: Enter your checkpoint name"
-    },
-    {
-      "id": 11,
-      "type": "PerfLab_ShowText",
-      "pos": [950, 670],
-      "size": {"0": 260, "1": 140},
-      "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [
-        {"name": "text", "type": "STRING", "link": 7}
-      ],
-      "outputs": [
-        {"name": "text", "type": "STRING", "links": [], "slot_index": 0}
-      ],
-      "properties": {},
-      "widgets_values": [],
-      "title": "Optimal Settings for Your Model"
-    },
-    {
-      "id": 12,
       "type": "PerfLab_QuickStart",
       "pos": [100, 750],
       "size": {"0": 280, "1": 60},
       "flags": {},
-      "order": 11,
+      "order": 9,
       "mode": 0,
       "outputs": [
-        {"name": "guide", "type": "STRING", "links": [8], "slot_index": 0}
+        {"name": "guide", "type": "STRING", "links": [9], "slot_index": 0}
       ],
       "properties": {},
       "widgets_values": ["Getting Started"],
-      "title": "HELP: Select a topic"
+      "title": "Help: Select Topic"
     },
     {
-      "id": 13,
+      "id": 11,
       "type": "PerfLab_ShowText",
       "pos": [420, 750],
       "size": {"0": 460, "1": 200},
       "flags": {},
-      "order": 12,
+      "order": 10,
       "mode": 0,
       "inputs": [
-        {"name": "text", "type": "STRING", "link": 8}
+        {"name": "text", "type": "STRING", "link": 9}
       ],
       "outputs": [
         {"name": "text", "type": "STRING", "links": [], "slot_index": 0}
       ],
       "properties": {},
       "widgets_values": [],
-      "title": "Instructions & Tips"
+      "title": "Instructions"
     },
     {
-      "id": 14,
-      "type": "PerfLab_AutoOptimize",
-      "pos": [1280, 150],
-      "size": {"0": 300, "1": 260},
+      "id": 12,
+      "type": "PerfLab_SmartPrompt",
+      "pos": [1350, 530],
+      "size": {"0": 260, "1": 200},
       "flags": {},
-      "order": 13,
+      "order": 11,
       "mode": 0,
-      "inputs": [
-        {"name": "performance_report", "type": "STRING", "link": 9}
-      ],
       "outputs": [
-        {"name": "suggested_steps", "type": "INT", "links": [], "slot_index": 0},
-        {"name": "suggested_resolution", "type": "INT", "links": [], "slot_index": 1},
-        {"name": "suggested_cfg", "type": "FLOAT", "links": [], "slot_index": 2},
-        {"name": "explanation", "type": "STRING", "links": [10], "slot_index": 3},
-        {"name": "raw_response", "type": "STRING", "links": [], "slot_index": 4}
+        {"name": "prompt", "type": "STRING", "links": [10], "slot_index": 0},
+        {"name": "system_specs", "type": "STRING", "links": [], "slot_index": 1}
       ],
       "properties": {},
-      "widgets_values": ["speed", 30, 1024, 7.0, "Unknown", "http://127.0.0.1:11434", "llama3.2"],
-      "title": "AUTO: LLM Optimization (Ollama)"
+      "widgets_values": ["speed", true, true],
+      "title": "Manual: Rich Prompt Generator"
     },
     {
-      "id": 15,
+      "id": 13,
       "type": "PerfLab_ShowText",
-      "pos": [1280, 470],
-      "size": {"0": 300, "1": 180},
+      "pos": [1350, 780],
+      "size": {"0": 260, "1": 180},
       "flags": {},
-      "order": 14,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {"name": "text", "type": "STRING", "link": 10}
@@ -273,106 +236,62 @@
       ],
       "properties": {},
       "widgets_values": [],
-      "title": "LLM Suggestions & Explanation"
-    },
-    {
-      "id": 16,
-      "type": "PerfLab_ApplyOrRevert",
-      "pos": [1280, 700],
-      "size": {"0": 300, "1": 200},
-      "flags": {},
-      "order": 15,
-      "mode": 0,
-      "outputs": [
-        {"name": "steps", "type": "INT", "links": [], "slot_index": 0},
-        {"name": "resolution", "type": "INT", "links": [], "slot_index": 1},
-        {"name": "cfg", "type": "FLOAT", "links": [], "slot_index": 2},
-        {"name": "comparison", "type": "STRING", "links": [11], "slot_index": 3}
-      ],
-      "properties": {},
-      "widgets_values": [false, 30, 1024, 7.0, 25, 768, 5.0, 0.0, 0.0, 0.0, 0.0],
-      "title": "DECIDE: Keep Changes or Revert"
-    },
-    {
-      "id": 17,
-      "type": "PerfLab_ShowText",
-      "pos": [1280, 950],
-      "size": {"0": 300, "1": 100},
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [
-        {"name": "text", "type": "STRING", "link": 11}
-      ],
-      "outputs": [
-        {"name": "text", "type": "STRING", "links": [], "slot_index": 0}
-      ],
-      "properties": {},
-      "widgets_values": [],
-      "title": "Comparison Summary"
+      "title": "Copy to Claude/GPT/Gemini"
     }
   ],
   "links": [
     [1, 1, 0, 2, 1, "PERF_TIMER"],
     [2, 2, 0, 3, 0, "STRING"],
-    [3, 3, 0, 4, 0, "STRING"],
-    [4, 4, 0, 5, 0, "STRING"],
     [5, 6, 5, 7, 0, "STRING"],
     [6, 8, 3, 9, 0, "STRING"],
-    [7, 10, 3, 11, 0, "STRING"],
-    [8, 12, 0, 13, 0, "STRING"],
-    [9, 2, 0, 14, 0, "STRING"],
-    [10, 14, 3, 15, 0, "STRING"],
-    [11, 16, 3, 17, 0, "STRING"]
+    [7, 2, 1, 4, 0, "FLOAT"],
+    [8, 4, 5, 5, 0, "STRING"],
+    [9, 10, 0, 11, 0, "STRING"],
+    [10, 12, 0, 13, 0, "STRING"]
   ],
   "groups": [
     {
-      "title": "STEP 1: ADD TIMER AT START OF YOUR WORKFLOW",
+      "title": "1️⃣ ADD TIMER AT START",
       "bounding": [80, 100, 260, 120],
       "color": "#3f789e"
     },
     {
-      "title": "⬇️ STEP 2: YOUR WORKFLOW GOES HERE ⬇️ (Paste/build your image generation workflow between Timer and Report)",
+      "title": "2️⃣ YOUR WORKFLOW GOES HERE ⬇️",
       "bounding": [360, 100, 200, 320],
       "color": "#555"
     },
     {
-      "title": "MANUAL: Generate Prompt → Copy to Claude/GPT",
-      "bounding": [580, 100, 320, 740],
+      "title": "3️⃣ GET PERFORMANCE REPORT",
+      "bounding": [580, 100, 320, 360],
       "color": "#3a8"
     },
     {
-      "title": "OPTIONAL: ONE-CLICK OPTIMIZE (toggle test_mode to switch fast/quality)",
+      "title": "⭐ AUTOMATED LLM OPTIMIZATION (Ollama)",
+      "bounding": [930, 100, 380, 700],
+      "color": "#8a3"
+    },
+    {
+      "title": "QUICK: TEST/PRODUCTION TOGGLE",
       "bounding": [80, 250, 320, 480],
       "color": "#a83"
     },
     {
-      "title": "INFO: GPU & MODEL DETECTION",
-      "bounding": [930, 100, 300, 740],
-      "color": "#88a"
-    },
-    {
-      "title": "HELP: GUIDES & TROUBLESHOOTING",
+      "title": "📖 HELP & MANUAL MODE",
       "bounding": [80, 720, 820, 260],
       "color": "#a88"
     },
     {
-      "title": "🔄 ITERATE: Run → Check Results → Ask AI → Apply Changes → Repeat Until Satisfied!",
-      "bounding": [580, 850, 320, 30],
-      "color": "#f80"
-    },
-    {
-      "title": "🤖 AUTOMATED LLM (Ollama) - Requires: ollama serve",
-      "bounding": [1260, 100, 340, 920],
-      "color": "#8a3"
+      "title": "💡 GPU INFO",
+      "bounding": [1330, 100, 300, 400],
+      "color": "#88a"
     }
   ],
   "config": {},
   "extra": {
     "info": {
-      "name": "Performance Lab v0.8.0 - Complete Guide",
-      "description": "Two optimization paths: MANUAL (copy prompt to Claude/GPT) or AUTOMATED (Ollama local LLM). Run workflow → See results → Get suggestions → Apply → Test → Keep or Revert → Repeat!",
-      "version": "0.8.0"
+      "name": "Performance Lab v0.9.0 - User-Friendly Optimization",
+      "description": "THE EASY WAY TO OPTIMIZE:\n1. Add Timer at start of your workflow\n2. Connect your final output to Report trigger\n3. Connect Report duration to Optimization Loop\n4. Wire Loop outputs to your KSampler/EmptyLatent\n5. Run → Increase round_number → Run again\n6. Stop when should_stop = TRUE\n\nRequires Ollama: ollama serve && ollama pull llama3.2",
+      "version": "0.9.0"
     }
   },
   "version": 0.4

@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-performance-lab"
-version = "0.8.0"
+version = "0.9.0"
 description = "Make any ComfyUI workflow faster, use less VRAM, or produce better quality - with AI assistance"
 readme = "README.md"
 license = {text = "MIT"}
