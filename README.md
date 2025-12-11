@@ -1,15 +1,23 @@
-# ComfyUI Performance Lab v0.2 - Model Tuner Edition
+# ComfyUI Performance Lab
+
+> **One-Line Install** (ComfyUI Manager with security set to "weak"):
+> ```
+> https://github.com/laboratoiresonore/ComfyUI_PerformanceLab
+> ```
+> Paste this URL in ComfyUI Manager → Install via Git URL
+
+---
 
 **Iterative Workflow Optimization with Smart Model Detection & One-Click Tuning**
 
-```
+```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║          ⚡ COMFYUI PERFORMANCE LAB v0.2 - MODEL TUNER EDITION ⚡            ║
+║                    ⚡ COMFYUI PERFORMANCE LAB ⚡                              ║
 ║       Auto-Detect Models • Smart Optimization • LoRA Tuning • More!         ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.2.0-orange)
+![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.2.1-orange)
 
 ## What's New in v0.2
 
@@ -463,29 +471,28 @@ COMFY_URL = "http://127.0.0.1:8188"  # ComfyUI API address
 
 ## Version History
 
-- **v0.2.0** - Model Tuner Edition
+- **v0.2.1**
+  - Iterative workflow (accept=overwrite, reject=discard)
+  - Workflow fingerprinting & incompatible overwrite protection
+  - Beautification menu (organize, align, color code)
+  - Save As option for explicit version branching
+
+- **v0.2.0**
   - Model Tuner with auto-detection (SD1.5, SDXL, Flux, SD3, etc.)
   - Model-specific optimization presets
   - LoRA strength recommendations
   - Sampler/scheduler recommendations per model
   - One-step installer (install.py)
-  - Standalone model_tuner.py module
 
-- **v0.1.0** - Ultimate Edition
+- **v0.1.0**
   - Quick Actions menu
   - Benchmark Mode
   - Smart Suggestions
   - Presets System
   - Progress Dashboard
-  - Workflow Diff
   - Multi-Platform Clipboard
   - Configuration Persistence
   - Built-in Mods Library
-
-- **v2.0** - Original release
-  - Basic mod system
-  - LLM prompt generation
-  - Session history
 
 ## License
 
