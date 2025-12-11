@@ -1,17 +1,28 @@
-# ComfyUI Performance Lab v0.1 - Ultimate Edition
+# ComfyUI Performance Lab v0.2 - Model Tuner Edition
 
-**Iterative Workflow Optimization with LLM-Assisted Analysis & Smart Features**
+**Iterative Workflow Optimization with Smart Model Detection & One-Click Tuning**
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║             ⚡ COMFYUI PERFORMANCE LAB v0.1 - ULTIMATE EDITION ⚡             ║
-║     Iterative Workflow Optimization with LLM-Assisted Analysis & More!       ║
+║          ⚡ COMFYUI PERFORMANCE LAB v0.2 - MODEL TUNER EDITION ⚡            ║
+║       Auto-Detect Models • Smart Optimization • LoRA Tuning • More!         ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.1.0-orange)
+![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.2.0-orange)
 
-## What's New in v0.1
+## What's New in v0.2
+
+| Feature | Description |
+|---------|-------------|
+| 🎛️ **Model Tuner** | Auto-detect SD1.5, SDXL, Flux, SD3 and apply optimal settings |
+| 🔍 **Smart Model Detection** | Automatically identifies model type from workflow |
+| 📊 **Model-Specific Presets** | Optimal settings for each model type |
+| 🎨 **LoRA Strength Tuning** | Recommendations and A/B testing for LoRA values |
+| 🎯 **Sampler Recommendations** | Best samplers/schedulers per model and use case |
+| 📦 **One-Step Installer** | `python install.py` - works anywhere |
+
+### Previous Features (v0.1)
 
 | Feature | Description |
 |---------|-------------|
@@ -39,28 +50,51 @@ You can use the built-in smart suggestions for instant optimizations, or generat
 
 ## Installation
 
-```bash
-# Clone or copy the files
-mkdir comfyui-performance-lab
-cd comfyui-performance-lab
+### One-Step Install (Recommended)
 
-# No dependencies required! Uses only Python standard library.
-python performance_lab.py
+```bash
+# Clone the repo
+git clone https://github.com/laboratoiresonore/ComfyUI_PerformanceLab.git
+cd ComfyUI_PerformanceLab
+
+# Run the installer
+python install.py
 ```
+
+The installer will:
+- Auto-detect your ComfyUI installation
+- Set up all necessary files
+- Create a launcher script
+- Offer to run Performance Lab immediately
+
+### Manual Install
+
+```bash
+# Clone or copy the files to your ComfyUI directory
+cd /path/to/ComfyUI
+git clone https://github.com/laboratoiresonore/ComfyUI_PerformanceLab.git Workflowmods
+
+# Run directly
+python Workflowmods/performance_lab.py
+```
+
+No dependencies required! Uses only Python standard library.
 
 ## Directory Structure
 
 ```
-comfyui-performance-lab/
-├── performance_lab.py              # Main application (v0.1)
-├── performance_lab_backup.py       # Backup of v2.0
-├── mod_manager.py                  # Simple mod manager (v1.0)
+ComfyUI_PerformanceLab/
+├── performance_lab.py              # Main application (v0.2)
+├── model_tuner.py                  # Model detection & optimization
+├── install.py                      # One-step installer
+├── lora_optimizer.py               # LoRA settings optimizer
+├── mod_manager.py                  # Simple mod manager
 ├── mods/                           # Your mod collection
 │   ├── vram_optimizer.py           # Reduce VRAM usage
 │   ├── bypass_upscalers.py         # Skip upscaling
-│   └── reduce_steps.py             # Lower step count
+│   ├── mute_group.py               # Mute node groups
+│   └── unwrap_list.py              # Unwrap list nodes
 ├── performance_lab_config.json     # Auto-saved configuration
-├── session_*.json                  # Exported sessions
 └── README.md
 ```
 
@@ -89,10 +123,46 @@ python performance_lab.py
 | **7** | 📈 View Dashboard | Session history & trends |
 | **8** | ⚙️ Presets | Apply optimization presets |
 | **9** | Set Goal | Tell LLMs what you're optimizing |
+| **M** | 🎛️ Model Tuner | Auto-detect model & optimize |
 | **C** | Test Connection | Verify ComfyUI API access |
 | **T** | Change Target | Switch to different workflow |
 | **E** | Export Session | Save session to file |
 | **Q** | Quit | Exit (saves configuration) |
+
+## Model Tuner
+
+The Model Tuner automatically detects your model type and applies optimal settings:
+
+### Supported Models
+
+| Model | Resolution | Steps | CFG | Best Samplers |
+|-------|------------|-------|-----|---------------|
+| SD 1.5 | 512x512 | 25 | 7.5 | dpmpp_2m, euler_ancestral |
+| SD 2.1 | 768x768 | 30 | 7.0 | dpmpp_2m, euler |
+| SDXL | 1024x1024 | 30 | 7.0 | dpmpp_2m_sde, euler_ancestral |
+| SDXL Turbo | 512x512 | 4 | 1.0 | euler_ancestral |
+| SD3 | 1024x1024 | 28 | 4.5 | euler, dpmpp_2m |
+| Flux Dev | 1024x1024 | 28 | 3.5 | euler, ipndm |
+| Flux Schnell | 1024x1024 | 4 | 1.0 | euler |
+| Stable Cascade | 1024x1024 | 20 | 4.0 | euler |
+
+### Model Tuner Features
+
+- **Auto-Detection**: Identifies model from workflow nodes and settings
+- **Optimal Presets**: Speed, Balanced, Quality, Creative, Consistent
+- **LoRA Recommendations**: Suggested strengths per model type
+- **Sampler Guide**: Best sampler/scheduler combos for each use case
+
+### Usage
+
+1. Load your workflow
+2. Press **M** for Model Tuner
+3. Review detected model and optimal settings
+4. Choose an action:
+   - Apply optimal settings
+   - Create speed variant
+   - Create quality variant
+   - View all recommendations
 
 ## Quick Actions
 
@@ -340,6 +410,14 @@ COMFY_URL = "http://127.0.0.1:8188"  # ComfyUI API address
 - Or manually copy the generated prompt
 
 ## Version History
+
+- **v0.2.0** - Model Tuner Edition
+  - Model Tuner with auto-detection (SD1.5, SDXL, Flux, SD3, etc.)
+  - Model-specific optimization presets
+  - LoRA strength recommendations
+  - Sampler/scheduler recommendations per model
+  - One-step installer (install.py)
+  - Standalone model_tuner.py module
 
 - **v0.1.0** - Ultimate Edition
   - Quick Actions menu

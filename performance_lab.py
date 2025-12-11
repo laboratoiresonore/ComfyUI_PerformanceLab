@@ -34,6 +34,17 @@ from datetime import datetime
 from collections import OrderedDict
 from typing import Optional, Tuple, Dict, List, Any, Callable
 
+# Try to import model_tuner for smart model detection
+try:
+    from model_tuner import (
+        detect_model, optimize_workflow, get_model_presets,
+        ModelDetector, ModelOptimizer, LoRATuner, SamplerRecommender,
+        MODEL_PROFILES, ModelType
+    )
+    MODEL_TUNER_AVAILABLE = True
+except ImportError:
+    MODEL_TUNER_AVAILABLE = False
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1503,6 +1514,8 @@ class PerformanceLab:
                 self.setup_target_workflow()
             elif choice == 'e':
                 self.export_session()
+            elif choice == 'm':
+                self.model_tuner_menu()
             else:
                 print(f"  {styled('Invalid choice', Style.YELLOW)}")
 
@@ -1590,6 +1603,7 @@ class PerformanceLab:
             ("7", "📈 View Dashboard", f"{len(self.session.entries)} modifications", Style.WHITE),
             ("8", "⚙️  Presets", "8GB VRAM, Speed Test...", Style.WHITE),
             ("9", "Set Goal", self.user_goal[:20] + "..." if len(self.user_goal) > 20 else (self.user_goal or "Not set"), Style.WHITE),
+            ("M", "🎛️  Model Tuner", "Auto-detect & optimize", Style.GREEN),
             ("C", "Test Connection", "", Style.WHITE),
             ("T", "Change Target", "", Style.WHITE),
             ("E", "Export Session", "", Style.WHITE),
@@ -2061,6 +2075,122 @@ class PerformanceLab:
             if write_workflow(exp_path, new_content):
                 print(f"  {styled('✓', Style.GREEN)} Created: {styled(exp_path, Style.BOLD)}")
                 print(f"  {styled('📄', Style.DIM)} Load in ComfyUI and test!")
+
+    def model_tuner_menu(self):
+        """Model Tuner - Auto-detect model and apply optimizations."""
+        if not MODEL_TUNER_AVAILABLE:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Model Tuner not available.")
+            print(f"  {styled('Make sure model_tuner.py is in the same directory.', Style.DIM)}")
+            return
+
+        if not self.workflow_content:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Load a workflow first.")
+            return
+
+        # Detect model
+        model_info = detect_model(self.workflow_content)
+        model_type_str = model_info["type"]
+        model_name = model_info["name"]
+        confidence = model_info["confidence"]
+        profile = model_info["profile"]
+
+        print_box("🎛️ Model Tuner", [
+            "Smart optimization based on detected model type.",
+            "Automatically adjusts settings for best results.",
+        ], Style.GREEN, icon="")
+
+        # Show detection results
+        print(f"\n  {styled('📊 Model Detection', Style.BOLD)}")
+        print(f"  {'─' * 50}")
+
+        if model_type_str == "unknown":
+            print(f"  {styled('⚠ Could not detect model type', Style.YELLOW)}")
+            print(f"  {styled('Using default SD1.5 settings', Style.DIM)}")
+        else:
+            conf_pct = int(confidence * 100)
+            conf_color = Style.GREEN if conf_pct > 70 else Style.YELLOW
+            print(f"  Detected: {styled(model_name, Style.BOLD, Style.CYAN)}")
+            print(f"  Confidence: {styled(f'{conf_pct}%', conf_color)}")
+
+        # Show optimal settings
+        if profile:
+            print(f"\n  {styled('⚙️ Optimal Settings', Style.BOLD)}")
+            print(f"  Resolution:  {styled(f'{profile.base_resolution[0]}x{profile.base_resolution[1]}', Style.CYAN)}")
+            print(f"  Steps:       {styled(str(profile.optimal_steps), Style.CYAN)} (range: {profile.min_steps}-{profile.max_steps})")
+            print(f"  CFG:         {styled(str(profile.default_cfg), Style.CYAN)} (range: {profile.cfg_range[0]}-{profile.cfg_range[1]})")
+            print(f"  Samplers:    {styled(', '.join(profile.best_samplers[:3]), Style.DIM)}")
+            print(f"  Schedulers:  {styled(', '.join(profile.best_schedulers[:3]), Style.DIM)}")
+
+            if profile.tips:
+                print(f"\n  {styled('💡 Tips:', Style.YELLOW)}")
+                for tip in profile.tips[:3]:
+                    print(f"    • {tip}")
+
+        # Show LoRA info
+        try:
+            lora_nodes = LoRATuner.find_lora_nodes(self.workflow_content)
+            if lora_nodes:
+                loras = LoRATuner.extract_lora_info(lora_nodes)
+                if loras:
+                    print(f"\n  {styled('🎨 LoRAs Detected:', Style.BOLD)} {len(loras)}")
+                    for lora in loras[:3]:
+                        name = os.path.basename(lora["name"])[:35]
+                        strength = lora.get("strength_model", "N/A")
+                        print(f"    • {name} (strength: {strength})")
+        except Exception:
+            pass
+
+        # Menu options
+        print(f"\n  {styled('Actions:', Style.BOLD)}")
+        print(f"    {styled('1', Style.CYAN)} Apply optimal settings (balanced)")
+        print(f"    {styled('2', Style.CYAN)} Create speed variant")
+        print(f"    {styled('3', Style.CYAN)} Create quality variant")
+        print(f"    {styled('4', Style.CYAN)} Show all sampler recommendations")
+        print(f"    {styled('B', Style.CYAN)} Back to main menu")
+
+        choice = input(f"\n  {styled('▶', Style.CYAN)} Choice: ").strip().lower()
+
+        if choice == 'b':
+            return
+
+        try:
+            model_type = ModelType(model_type_str) if model_type_str != "unknown" else ModelType.SD15
+        except (ValueError, KeyError):
+            model_type = ModelType.SD15
+
+        if choice == '1':
+            optimized = optimize_workflow(self.workflow_content, "balanced")
+            exp_path = create_experimental_path(self.target_workflow).replace("_experimental", "_model_optimized")
+            if write_workflow(exp_path, optimized):
+                print(f"  {styled('✓', Style.GREEN)} Created: {styled(exp_path, Style.BOLD)}")
+                print(f"  {styled('📄', Style.DIM)} Load in ComfyUI and test!")
+
+        elif choice == '2':
+            optimized = optimize_workflow(self.workflow_content, "speed")
+            exp_path = create_experimental_path(self.target_workflow).replace("_experimental", "_speed")
+            if write_workflow(exp_path, optimized):
+                print(f"  {styled('✓', Style.GREEN)} Created: {styled(exp_path, Style.BOLD)}")
+
+        elif choice == '3':
+            optimized = optimize_workflow(self.workflow_content, "quality")
+            exp_path = create_experimental_path(self.target_workflow).replace("_experimental", "_quality")
+            if write_workflow(exp_path, optimized):
+                print(f"  {styled('✓', Style.GREEN)} Created: {styled(exp_path, Style.BOLD)}")
+
+        elif choice == '4':
+            # Show all recommendations
+            presets = get_model_presets(model_type_str)
+            print(f"\n  {styled('📋 All Recommendations for ' + model_name, Style.BOLD)}")
+            print(f"  {'─' * 50}")
+
+            for use_case, rec in presets.items():
+                print(f"\n  {styled(use_case.upper(), Style.CYAN)} - {rec['description']}")
+                print(f"    Sampler:   {rec['recommended_sampler']}")
+                print(f"    Scheduler: {rec['recommended_scheduler']}")
+                print(f"    Steps:     {rec['recommended_steps']}")
+                print(f"    CFG:       {rec['recommended_cfg']}")
+
+        input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
 
     def generate_llm_prompt(self):
         """Generate a prompt for external LLM analysis."""
