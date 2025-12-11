@@ -17,9 +17,23 @@
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.2.1-orange)
+![Performance Lab](https://img.shields.io/badge/ComfyUI-Performance%20Lab-blue) ![Python 3.7+](https://img.shields.io/badge/Python-3.7+-green) ![No Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen) ![Version](https://img.shields.io/badge/Version-0.3.0-orange)
 
-## What's New in v0.2
+## What's New in v0.3
+
+| Feature | Description |
+|---------|-------------|
+| 🤖 **LLM Enhancer** | Advanced AI context generation for better LLM assistance |
+| 📋 **Node Catalog Export** | Query installed ComfyUI nodes to include in prompts |
+| 💻 **System Specs** | Include GPU/VRAM/CPU info for context-aware optimization |
+| 🎯 **Goal-Based Prompts** | Templates for Debug, Speed, Quality, VRAM, Explain |
+| ✅ **Mod Validation** | Validate LLM-generated workflow mods before applying |
+| 📜 **Conversation Memory** | Remember context across optimization sessions |
+| 📚 **Knowledge Base** | Common issues and solutions library |
+| 🗺️ **Workflow Graph** | ASCII/Mermaid visualization of workflow structure |
+| 📝 **Error History** | Track and export errors for debugging |
+
+### Previous Features (v0.2)
 
 | Feature | Description |
 |---------|-------------|
@@ -114,11 +128,12 @@ No dependencies required! Uses only Python standard library.
 
 ```
 ComfyUI_PerformanceLab/
-├── performance_lab.py              # Main application (v0.2)
+├── performance_lab.py              # Main application (v0.3)
+├── llm_enhancer.py                 # LLM context generation & validation
 ├── model_tuner.py                  # Model detection & optimization
+├── workflow_utils.py               # Fingerprinting & beautification
 ├── install.py                      # One-step installer
-├── lora_optimizer.py               # LoRA settings optimizer
-├── mod_manager.py                  # Simple mod manager
+├── knowledge_base.json             # Common issues & solutions (auto-generated)
 ├── mods/                           # Your mod collection
 │   ├── vram_optimizer.py           # Reduce VRAM usage
 │   ├── bypass_upscalers.py         # Skip upscaling
@@ -153,6 +168,7 @@ python performance_lab.py
 | **7** | 📈 View Dashboard | Session history & trends |
 | **8** | ⚙️ Presets | Apply optimization presets |
 | **9** | Set Goal | Tell LLMs what you're optimizing |
+| **L** | 🤖 LLM Enhancer | Advanced AI context generation |
 | **M** | 🎛️ Model Tuner | Auto-detect model & optimize |
 | **B** | 🎨 Beautify | Organize & clean up workflow |
 | **S** | 💾 Save As | Save to new file (branch version) |
@@ -223,6 +239,95 @@ Nodes are automatically categorized:
 - **IPAdapter**: Face/style adapters
 - **Upscale**: ESRGAN, Ultimate Upscale
 - **Output**: Save, preview nodes
+
+## LLM Enhancer
+
+Press **L** to access advanced AI context generation for better LLM assistance:
+
+### Features
+
+| Option | Description |
+|--------|-------------|
+| **📋 Generate Full Context** | Comprehensive prompt with all available context |
+| **🔧 Debug Workflow** | Generate debug-focused prompt for fixing errors |
+| **⚡ Optimize Speed** | Generate speed optimization prompt |
+| **🎨 Improve Quality** | Generate quality improvement prompt |
+| **💾 Reduce VRAM** | Generate VRAM optimization prompt |
+| **📖 Explain Workflow** | Generate explanation request prompt |
+| **✅ Validate Response** | Validate and parse LLM mod response before applying |
+| **🔍 Node Catalog** | Browse installed ComfyUI nodes |
+| **💻 System Specs** | Show current hardware context |
+| **📚 Knowledge Base** | Browse and search common solutions |
+| **📜 History** | View past LLM interactions |
+| **🗺️ Workflow Graph** | ASCII/Mermaid visualization |
+
+### Goal-Based Prompt Templates
+
+Each goal generates a specialized prompt:
+
+- **Debug**: Includes error logs, node validation, fix format
+- **Speed**: Focuses on step reduction, samplers, caching
+- **Quality**: Upscaling, refinement passes, CFG tuning
+- **VRAM**: Tiled VAE, fp16/fp8, memory-efficient techniques
+- **Explain**: Educational breakdown of workflow components
+
+### Node Catalog
+
+Queries ComfyUI's `/object_info` API to get all installed nodes:
+
+```
+# Available ComfyUI Nodes
+Total nodes: 847
+Categories: 42
+
+## conditioning (15 nodes)
+  - CLIPTextEncode [conditioning] - in(clip: CLIP, text: STRING) -> out(CONDITIONING)
+  - ConditioningCombine [conditioning] - in(conditioning_1: CONDITIONING) -> out(CONDITIONING)
+  ...
+```
+
+### System Specs
+
+Automatically detects and includes:
+
+- OS and version
+- CPU name and cores
+- RAM amount
+- GPU name and VRAM
+- CUDA version
+- PyTorch version
+- Optimization notes based on hardware
+
+### Mod Validation
+
+Validates LLM-generated mods before applying:
+
+- **JSON syntax check**: Fixes common formatting issues
+- **Node validation**: Verifies all nodes exist in catalog
+- **Link validation**: Checks connections are valid
+- **Breaking change detection**: Warns about removed nodes or type changes
+- **Auto-fix**: Attempts to repair common issues
+
+### Conversation Memory
+
+Persists context across sessions (SQLite database):
+
+- Tracks optimization attempts per workflow
+- Records applied/success status
+- Shows success rates and patterns
+- Provides history context in prompts
+
+### Knowledge Base
+
+Built-in solutions for common issues:
+
+- **VRAM**: OOM errors, tiling, precision
+- **Quality**: Black images, artifacts, CFG tuning
+- **Speed**: Slow generation, CUDA issues
+- **Models**: Flux CFG, LoRA strength, sampler selection
+- **Nodes**: Missing nodes, compatibility
+
+Entries are automatically matched to your workflow.
 
 ## Quick Actions
 
@@ -470,6 +575,17 @@ COMFY_URL = "http://127.0.0.1:8188"  # ComfyUI API address
 - Or manually copy the generated prompt
 
 ## Version History
+
+- **v0.3.0**
+  - LLM Enhancer module for advanced AI context generation
+  - Node Catalog Export - queries ComfyUI /object_info API
+  - System Specs collector - GPU, VRAM, CPU info for context
+  - Goal-based prompt templates (Debug, Speed, Quality, VRAM, Explain)
+  - Mod Validation Layer - validates LLM responses before applying
+  - Conversation Memory - persists context across sessions
+  - Knowledge Base - common issues and solutions library
+  - Workflow Graph Export - ASCII and Mermaid visualizations
+  - Error History tracking and export
 
 - **v0.2.1**
   - Iterative workflow (accept=overwrite, reject=discard)

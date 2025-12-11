@@ -56,11 +56,23 @@ try:
 except ImportError:
     WORKFLOW_UTILS_AVAILABLE = False
 
+# Try to import LLM enhancer for advanced LLM integration
+try:
+    from llm_enhancer import (
+        LLMContextBuilder, NodeCatalog, SystemSpecsCollector,
+        PromptGenerator, PromptGoal, ModValidator, ValidationResult,
+        ConversationMemory, KnowledgeBase, ErrorHistory,
+        WorkflowGraphExporter, PROMPT_TEMPLATES
+    )
+    LLM_ENHANCER_AVAILABLE = True
+except ImportError:
+    LLM_ENHANCER_AVAILABLE = False
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 MODS_DIR = "mods"
 COMFY_URL = "http://127.0.0.1:8188"
 SESSION_LOG = "session_history.json"
@@ -1525,12 +1537,16 @@ class PerformanceLab:
                 self.setup_target_workflow()
             elif choice == 'e':
                 self.export_session()
+            elif choice == 'l':
+                self.llm_enhancer_menu()
             elif choice == 'm':
                 self.model_tuner_menu()
             elif choice == 'b':
                 self.beautify_menu()
             elif choice == 's':
                 self.save_as_menu()
+            elif choice == 'u':
+                self.update_performance_lab()
             else:
                 print(f"  {styled('Invalid choice', Style.YELLOW)}")
 
@@ -1618,8 +1634,10 @@ class PerformanceLab:
             ("7", "📈 View Dashboard", f"{len(self.session.entries)} modifications", Style.WHITE),
             ("8", "⚙️  Presets", "8GB VRAM, Speed Test...", Style.WHITE),
             ("9", "Set Goal", self.user_goal[:20] + "..." if len(self.user_goal) > 20 else (self.user_goal or "Not set"), Style.WHITE),
+            ("L", "🤖 LLM Enhancer", "Advanced AI context", Style.GREEN),
             ("M", "🎛️  Model Tuner", "Auto-detect & optimize", Style.GREEN),
             ("B", "🎨 Beautify", "Organize & clean up", Style.MAGENTA),
+            ("U", "🔄 Update", "Pull latest from GitHub", Style.CYAN),
             ("C", "Test Connection", "", Style.WHITE),
             ("T", "Change Target", "", Style.WHITE),
             ("S", "Save As...", "Save to new file", Style.WHITE),
@@ -2349,6 +2367,575 @@ class PerformanceLab:
                 self.target_workflow = path
                 self.original_content = copy.deepcopy(self.workflow_content)
                 print(f"  {styled('✓', Style.GREEN)} Now targeting: {path}")
+
+        input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
+
+    def llm_enhancer_menu(self):
+        """LLM Enhancer - Advanced AI context generation."""
+        if not LLM_ENHANCER_AVAILABLE:
+            print(f"\n  {styled('⚠', Style.YELLOW)} LLM Enhancer not available.")
+            print(f"  {styled('Make sure llm_enhancer.py is in the same directory.', Style.DIM)}")
+            return
+
+        # Initialize LLM context builder
+        try:
+            llm_builder = LLMContextBuilder()
+        except Exception as e:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Error initializing LLM Enhancer: {e}")
+            return
+
+        print_box("🤖 LLM Enhancer", [
+            "Advanced AI context generation for better LLM assistance.",
+            "Provides comprehensive context including node catalog,",
+            "system specs, knowledge base, and conversation memory.",
+        ], Style.GREEN, icon="")
+
+        # Show available features
+        print(f"\n  {styled('Features:', Style.BOLD)}")
+        print(f"    {styled('1', Style.CYAN)} 📋 Generate Full Context Prompt")
+        print(f"       {styled('Comprehensive prompt with all available context', Style.DIM)}")
+        print(f"    {styled('2', Style.CYAN)} 🔧 Debug Workflow")
+        print(f"       {styled('Generate debug-focused prompt for fixing errors', Style.DIM)}")
+        print(f"    {styled('3', Style.CYAN)} ⚡ Optimize Speed")
+        print(f"       {styled('Generate speed optimization prompt', Style.DIM)}")
+        print(f"    {styled('4', Style.CYAN)} 🎨 Improve Quality")
+        print(f"       {styled('Generate quality improvement prompt', Style.DIM)}")
+        print(f"    {styled('5', Style.CYAN)} 💾 Reduce VRAM")
+        print(f"       {styled('Generate VRAM optimization prompt', Style.DIM)}")
+        print(f"    {styled('6', Style.CYAN)} 📖 Explain Workflow")
+        print(f"       {styled('Generate explanation request prompt', Style.DIM)}")
+        print(f"    {styled('7', Style.CYAN)} ✅ Validate LLM Response")
+        print(f"       {styled('Validate and parse LLM mod response', Style.DIM)}")
+        print(f"    {styled('8', Style.CYAN)} 🔍 View Node Catalog")
+        print(f"       {styled('Browse installed ComfyUI nodes', Style.DIM)}")
+        print(f"    {styled('9', Style.CYAN)} 💻 View System Specs")
+        print(f"       {styled('Show current hardware context', Style.DIM)}")
+        print(f"    {styled('K', Style.CYAN)} 📚 Knowledge Base")
+        print(f"       {styled('Browse and search common solutions', Style.DIM)}")
+        print(f"    {styled('H', Style.CYAN)} 📜 Conversation History")
+        print(f"       {styled('View past LLM interactions', Style.DIM)}")
+        print(f"    {styled('G', Style.CYAN)} 🗺️  Workflow Graph")
+        print(f"       {styled('ASCII visualization of workflow', Style.DIM)}")
+        print(f"\n    {styled('B', Style.CYAN)} Back to main menu")
+
+        choice = input(f"\n  {styled('▶', Style.CYAN)} Choice: ").strip().lower()
+
+        if choice == 'b':
+            return
+
+        if choice == '1':
+            self._llm_generate_full_context(llm_builder)
+        elif choice == '2':
+            self._llm_generate_goal_prompt(llm_builder, PromptGoal.DEBUG)
+        elif choice == '3':
+            self._llm_generate_goal_prompt(llm_builder, PromptGoal.SPEED)
+        elif choice == '4':
+            self._llm_generate_goal_prompt(llm_builder, PromptGoal.QUALITY)
+        elif choice == '5':
+            self._llm_generate_goal_prompt(llm_builder, PromptGoal.VRAM)
+        elif choice == '6':
+            self._llm_generate_goal_prompt(llm_builder, PromptGoal.EXPLAIN)
+        elif choice == '7':
+            self._llm_validate_response(llm_builder)
+        elif choice == '8':
+            self._llm_view_node_catalog(llm_builder)
+        elif choice == '9':
+            self._llm_view_system_specs()
+        elif choice == 'k':
+            self._llm_knowledge_base(llm_builder)
+        elif choice == 'h':
+            self._llm_conversation_history(llm_builder)
+        elif choice == 'g':
+            self._llm_workflow_graph()
+        else:
+            print(f"  {styled('Invalid choice', Style.YELLOW)}")
+
+        input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
+
+    def _llm_generate_full_context(self, llm_builder):
+        """Generate comprehensive LLM context."""
+        if not self.workflow_content:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Load a workflow first.")
+            return
+
+        print(f"\n  {styled('⚙', Style.CYAN)} Generating comprehensive context...")
+
+        # Get custom request
+        print(f"\n  {styled('Enter your request/question for the LLM:', Style.DIM)}")
+        custom_request = input(f"  {styled('▶', Style.CYAN)} ").strip()
+
+        if not custom_request:
+            custom_request = "Please analyze this workflow and suggest optimizations."
+
+        # Build context
+        try:
+            context = llm_builder.build_full_context(
+                workflow=self.workflow_content,
+                goal=PromptGoal.CUSTOM,
+                custom_request=custom_request,
+                include_nodes=True,
+                include_history=True,
+                include_knowledge=True,
+                include_errors=True,
+                include_graph=True,
+                metrics=self.session.metrics_baseline
+            )
+
+            # Copy to clipboard
+            success = copy_to_clipboard(context)
+
+            print(f"\n  {styled('✓', Style.GREEN)} Full context generated!")
+            print(f"  {styled(f'Length: {len(context)} characters', Style.DIM)}")
+
+            if success:
+                print(f"  {styled('📋 Copied to clipboard!', Style.CYAN)}")
+            else:
+                print(f"\n  {styled('Context preview (first 500 chars):', Style.DIM)}")
+                print(f"  {context[:500]}...")
+
+            # Record interaction
+            try:
+                llm_builder.record_interaction(
+                    workflow=self.workflow_content,
+                    goal="custom",
+                    request=custom_request,
+                    response="[prompt generated]",
+                    applied=False
+                )
+            except Exception:
+                pass
+
+        except Exception as e:
+            print(f"  {styled('✗ Error:', Style.RED)} {e}")
+
+    def _llm_generate_goal_prompt(self, llm_builder, goal: 'PromptGoal'):
+        """Generate goal-specific LLM prompt."""
+        if not self.workflow_content:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Load a workflow first.")
+            return
+
+        goal_names = {
+            PromptGoal.DEBUG: "Debug",
+            PromptGoal.SPEED: "Speed Optimization",
+            PromptGoal.QUALITY: "Quality Improvement",
+            PromptGoal.VRAM: "VRAM Reduction",
+            PromptGoal.EXPLAIN: "Explanation",
+        }
+
+        print(f"\n  {styled('⚙', Style.CYAN)} Generating {goal_names.get(goal, 'prompt')}...")
+
+        # Additional inputs for specific goals
+        error_log = ""
+        error_desc = ""
+        target_vram = 6.0
+
+        if goal == PromptGoal.DEBUG:
+            print(f"\n  {styled('Paste error message (Enter twice when done):', Style.DIM)}")
+            lines = []
+            while True:
+                line = input()
+                if line == "":
+                    if lines and lines[-1] == "":
+                        break
+                    lines.append("")
+                else:
+                    lines.append(line)
+            error_log = "\n".join(lines).strip()
+
+            error_desc = input(f"  {styled('▶', Style.CYAN)} Brief description of the problem: ").strip()
+
+        elif goal == PromptGoal.VRAM:
+            vram_input = input(f"  {styled('▶', Style.CYAN)} Target VRAM (GB, default 6): ").strip()
+            try:
+                target_vram = float(vram_input) if vram_input else 6.0
+            except ValueError:
+                target_vram = 6.0
+
+        # Generate prompt
+        try:
+            prompt_gen = PromptGenerator(llm_builder.node_catalog)
+            prompt = prompt_gen.generate(
+                goal=goal,
+                workflow=self.workflow_content,
+                metrics=self.session.metrics_baseline,
+                error_log=error_log,
+                error_description=error_desc,
+                target_vram=target_vram
+            )
+
+            # Copy to clipboard
+            success = copy_to_clipboard(prompt)
+
+            print(f"\n  {styled('✓', Style.GREEN)} Prompt generated!")
+            print(f"  {styled(f'Length: {len(prompt)} characters', Style.DIM)}")
+
+            if success:
+                print(f"  {styled('📋 Copied to clipboard!', Style.CYAN)}")
+            else:
+                print(f"\n  {styled('Prompt preview (first 500 chars):', Style.DIM)}")
+                print(f"  {prompt[:500]}...")
+
+        except Exception as e:
+            print(f"  {styled('✗ Error:', Style.RED)} {e}")
+
+    def _llm_validate_response(self, llm_builder):
+        """Validate LLM-generated workflow modification."""
+        print(f"\n  {styled('Paste LLM response JSON (Enter twice when done):', Style.DIM)}")
+
+        lines = []
+        while True:
+            line = input()
+            if line == "":
+                if lines and lines[-1] == "":
+                    break
+                lines.append("")
+            else:
+                lines.append(line)
+
+        response_json = "\n".join(lines).strip()
+
+        if not response_json:
+            print(f"  {styled('No input provided', Style.YELLOW)}")
+            return
+
+        print(f"\n  {styled('⚙', Style.CYAN)} Validating response...")
+
+        try:
+            result = llm_builder.validate_response(response_json, self.workflow_content)
+
+            print(f"\n{result.to_string()}")
+
+            if result.is_valid and result.fixed_workflow:
+                apply = input(f"\n  {styled('▶', Style.CYAN)} Apply validated workflow? (y/n): ").strip().lower()
+
+                if apply == 'y':
+                    # Check safety
+                    if WORKFLOW_UTILS_AVAILABLE and self.original_content:
+                        is_safe, warnings = is_safe_to_overwrite(self.original_content, result.fixed_workflow)
+
+                        if not is_safe:
+                            print(f"\n  {styled('⚠ INCOMPATIBLE CHANGES:', Style.RED)}")
+                            for w in warnings:
+                                print(f"    {w}")
+                            alt_path = suggest_filename(self.target_workflow, result.fixed_workflow)
+                            save_alt = input(f"  {styled('▶', Style.CYAN)} Save to {alt_path}? (y/n): ").strip().lower()
+                            if save_alt == 'y':
+                                write_workflow(alt_path, result.fixed_workflow)
+                                print(f"  {styled('✓', Style.GREEN)} Saved to: {alt_path}")
+                            return
+
+                    # Apply changes
+                    self.workflow_content = result.fixed_workflow
+                    write_workflow(self.target_workflow, result.fixed_workflow)
+                    print(f"  {styled('✓', Style.GREEN)} Applied and saved!")
+
+                    # Re-analyze
+                    self.session.workflow_analysis = WorkflowAnalyzer.analyze(result.fixed_workflow)
+
+                    # Record success
+                    try:
+                        llm_builder.record_interaction(
+                            workflow=self.original_content,
+                            goal="validated",
+                            request="[LLM mod applied]",
+                            response=response_json[:500],
+                            applied=True,
+                            success=True
+                        )
+                    except Exception:
+                        pass
+
+        except Exception as e:
+            print(f"  {styled('✗ Validation error:', Style.RED)} {e}")
+
+    def _llm_view_node_catalog(self, llm_builder):
+        """View installed ComfyUI nodes."""
+        print(f"\n  {styled('⚙', Style.CYAN)} Fetching node catalog from ComfyUI...")
+
+        try:
+            if llm_builder.node_catalog.fetch_catalog():
+                categories = llm_builder.node_catalog.get_all_categories()
+
+                print(f"\n  {styled('📋 Node Catalog', Style.BOLD)}")
+                print(f"  Total nodes: {styled(str(len(llm_builder.node_catalog._cache)), Style.CYAN)}")
+                print(f"  Categories: {styled(str(len(categories)), Style.CYAN)}")
+
+                print(f"\n  {styled('Categories:', Style.DIM)}")
+                for i, cat in enumerate(categories[:20]):
+                    count = len(llm_builder.node_catalog._categories[cat])
+                    print(f"    • {cat} ({count})")
+
+                if len(categories) > 20:
+                    print(f"    ... and {len(categories) - 20} more")
+
+                # Option to export
+                export = input(f"\n  {styled('▶', Style.CYAN)} Export to clipboard? (y/n): ").strip().lower()
+                if export == 'y':
+                    catalog_text = llm_builder.node_catalog.export_for_llm(compact=True, max_nodes=200)
+                    if copy_to_clipboard(catalog_text):
+                        print(f"  {styled('📋 Copied!', Style.GREEN)}")
+            else:
+                print(f"  {styled('⚠', Style.YELLOW)} Could not fetch catalog. Is ComfyUI running?")
+
+        except Exception as e:
+            print(f"  {styled('✗ Error:', Style.RED)} {e}")
+
+    def _llm_view_system_specs(self):
+        """View current system specifications."""
+        print(f"\n  {styled('⚙', Style.CYAN)} Collecting system specs...")
+
+        try:
+            specs = SystemSpecsCollector.collect()
+            print(f"\n{specs.to_llm_context()}")
+
+            export = input(f"\n  {styled('▶', Style.CYAN)} Copy to clipboard? (y/n): ").strip().lower()
+            if export == 'y':
+                if copy_to_clipboard(specs.to_llm_context()):
+                    print(f"  {styled('📋 Copied!', Style.GREEN)}")
+
+        except Exception as e:
+            print(f"  {styled('✗ Error:', Style.RED)} {e}")
+
+    def _llm_knowledge_base(self, llm_builder):
+        """Browse and search the knowledge base."""
+        print(f"\n  {styled('📚 Knowledge Base', Style.BOLD)}")
+
+        print(f"\n    {styled('1', Style.CYAN)} Browse all entries")
+        print(f"    {styled('2', Style.CYAN)} Search entries")
+        print(f"    {styled('3', Style.CYAN)} Find relevant for current workflow")
+
+        choice = input(f"\n  {styled('▶', Style.CYAN)} Choice: ").strip()
+
+        try:
+            if choice == '1':
+                entries = llm_builder.knowledge_base.entries
+                print(f"\n  Found {len(entries)} entries:")
+                for entry in entries:
+                    print(f"\n    {styled(entry.title, Style.BOLD)} [{entry.category}]")
+                    print(f"    {styled(entry.problem[:100], Style.DIM)}")
+
+            elif choice == '2':
+                query = input(f"  {styled('▶', Style.CYAN)} Search: ").strip()
+                results = llm_builder.knowledge_base.search(query)
+                print(f"\n  Found {len(results)} results:")
+                for entry in results:
+                    print(f"\n{entry.to_llm_context()}")
+
+            elif choice == '3':
+                if not self.workflow_content:
+                    print(f"  {styled('⚠', Style.YELLOW)} Load a workflow first.")
+                    return
+                results = llm_builder.knowledge_base.get_relevant_for_workflow(self.workflow_content)
+                print(f"\n  Found {len(results)} relevant entries:")
+                for entry in results:
+                    print(f"\n{entry.to_llm_context()}")
+
+        except Exception as e:
+            print(f"  {styled('✗ Error:', Style.RED)} {e}")
+
+    def _llm_conversation_history(self, llm_builder):
+        """View conversation history."""
+        print(f"\n  {styled('📜 Conversation History', Style.BOLD)}")
+
+        try:
+            stats = llm_builder.memory.get_stats()
+
+            print(f"\n  {styled('Statistics:', Style.DIM)}")
+            print(f"    Total conversations: {stats['total_conversations']}")
+            print(f"    Applied: {stats['applied']}")
+            print(f"    Successful: {stats['successful']}")
+            print(f"    Success rate: {stats['success_rate']:.1%}")
+            print(f"    Unique workflows: {stats['unique_workflows']}")
+
+            if stats['goals']:
+                print(f"\n  {styled('By goal:', Style.DIM)}")
+                for goal, count in stats['goals'].items():
+                    print(f"    • {goal}: {count}")
+
+            # Show recent history
+            history = llm_builder.memory.get_history(limit=5)
+            if history:
+                print(f"\n  {styled('Recent entries:', Style.DIM)}")
+                for entry in history:
+                    status = "✓" if entry.success else "✗" if entry.applied else "?"
+                    print(f"    {status} [{entry.timestamp[:10]}] {entry.goal}: {entry.user_message[:40]}...")
+
+        except Exception as e:
+            print(f"  {styled('✗ Error:', Style.RED)} {e}")
+
+    def _llm_workflow_graph(self):
+        """Show ASCII workflow graph."""
+        if not self.workflow_content:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Load a workflow first.")
+            return
+
+        print(f"\n  {styled('🗺️ Workflow Graph', Style.BOLD)}")
+
+        try:
+            # Show summary
+            summary = WorkflowGraphExporter.export_summary(self.workflow_content)
+            print(f"\n{summary}")
+
+            # Option for ASCII graph
+            show_graph = input(f"\n  {styled('▶', Style.CYAN)} Show full ASCII graph? (y/n): ").strip().lower()
+            if show_graph == 'y':
+                graph = WorkflowGraphExporter.export_ascii(self.workflow_content)
+                print(f"\n{graph}")
+
+            # Option for Mermaid
+            show_mermaid = input(f"\n  {styled('▶', Style.CYAN)} Export Mermaid diagram? (y/n): ").strip().lower()
+            if show_mermaid == 'y':
+                mermaid = WorkflowGraphExporter.export_mermaid(self.workflow_content)
+                if copy_to_clipboard(mermaid):
+                    print(f"  {styled('📋 Mermaid diagram copied!', Style.GREEN)}")
+                else:
+                    print(f"\n{mermaid}")
+
+        except Exception as e:
+            print(f"  {styled('✗ Error:', Style.RED)} {e}")
+
+    def update_performance_lab(self):
+        """Update Performance Lab from GitHub."""
+        print_box("🔄 Update Performance Lab", [
+            "Check for and install updates from GitHub.",
+            "Requires git to be installed.",
+        ], Style.CYAN, icon="")
+
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Check if it's a git repo
+        git_dir = os.path.join(script_dir, ".git")
+        is_git_repo = os.path.exists(git_dir)
+
+        print(f"\n  {styled('Location:', Style.DIM)} {script_dir}")
+        print(f"  {styled('Git repo:', Style.DIM)} {'Yes' if is_git_repo else 'No'}")
+
+        if not is_git_repo:
+            print(f"\n  {styled('⚠', Style.YELLOW)} Not a git repository.")
+            print(f"  {styled('Options:', Style.DIM)}")
+            print(f"    1. Run: git clone https://github.com/laboratoiresonore/ComfyUI_PerformanceLab.git")
+            print(f"    2. Or download and replace files manually")
+
+            # Offer to initialize git
+            init = input(f"\n  {styled('▶', Style.CYAN)} Initialize git repo and set remote? (y/n): ").strip().lower()
+            if init == 'y':
+                try:
+                    # Initialize git
+                    subprocess.run(["git", "init"], cwd=script_dir, check=True, capture_output=True)
+                    # Add remote
+                    subprocess.run([
+                        "git", "remote", "add", "origin",
+                        "https://github.com/laboratoiresonore/ComfyUI_PerformanceLab.git"
+                    ], cwd=script_dir, check=True, capture_output=True)
+                    # Fetch
+                    subprocess.run(["git", "fetch", "origin"], cwd=script_dir, check=True, capture_output=True)
+                    # Reset to origin/main
+                    subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=script_dir, check=True, capture_output=True)
+
+                    print(f"  {styled('✓', Style.GREEN)} Git initialized and synced with GitHub!")
+                    print(f"  {styled('Restart Performance Lab to use the new version.', Style.YELLOW)}")
+
+                except subprocess.CalledProcessError as e:
+                    print(f"  {styled('✗ Git error:', Style.RED)} {e}")
+                except FileNotFoundError:
+                    print(f"  {styled('✗ Git not found:', Style.RED)} Please install git first.")
+            return
+
+        # Check current version
+        print(f"\n  {styled('Current version:', Style.DIM)} v{VERSION}")
+
+        # Fetch updates
+        print(f"\n  {styled('⚙', Style.CYAN)} Fetching updates...")
+
+        try:
+            # Fetch from origin
+            result = subprocess.run(
+                ["git", "fetch", "origin"],
+                cwd=script_dir,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if result.returncode != 0:
+                print(f"  {styled('⚠', Style.YELLOW)} Fetch failed: {result.stderr}")
+                return
+
+            # Check if behind
+            result = subprocess.run(
+                ["git", "status", "-uno"],
+                cwd=script_dir,
+                capture_output=True,
+                text=True
+            )
+
+            status = result.stdout
+
+            if "Your branch is behind" in status:
+                # Get commit count
+                result = subprocess.run(
+                    ["git", "rev-list", "--count", "HEAD..origin/main"],
+                    cwd=script_dir,
+                    capture_output=True,
+                    text=True
+                )
+                commits_behind = result.stdout.strip()
+
+                print(f"  {styled(f'Updates available! ({commits_behind} commits behind)', Style.GREEN)}")
+
+                # Show what will change
+                result = subprocess.run(
+                    ["git", "log", "--oneline", "HEAD..origin/main"],
+                    cwd=script_dir,
+                    capture_output=True,
+                    text=True
+                )
+                print(f"\n  {styled('New commits:', Style.DIM)}")
+                for line in result.stdout.strip().split("\n")[:5]:
+                    print(f"    • {line}")
+
+                # Confirm update
+                confirm = input(f"\n  {styled('▶', Style.CYAN)} Pull updates? (y/n): ").strip().lower()
+
+                if confirm == 'y':
+                    # Stash local changes
+                    subprocess.run(["git", "stash"], cwd=script_dir, capture_output=True)
+
+                    # Pull
+                    result = subprocess.run(
+                        ["git", "pull", "origin", "main"],
+                        cwd=script_dir,
+                        capture_output=True,
+                        text=True
+                    )
+
+                    if result.returncode == 0:
+                        print(f"  {styled('✓', Style.GREEN)} Updated successfully!")
+                        print(f"  {styled('Restart Performance Lab to use the new version.', Style.YELLOW)}")
+
+                        # Offer to restart
+                        restart = input(f"\n  {styled('▶', Style.CYAN)} Restart now? (y/n): ").strip().lower()
+                        if restart == 'y':
+                            print(f"\n  {styled('Restarting...', Style.CYAN)}")
+                            os.execvp(sys.executable, [sys.executable, __file__])
+                    else:
+                        print(f"  {styled('✗ Pull failed:', Style.RED)} {result.stderr}")
+                        # Restore stash
+                        subprocess.run(["git", "stash", "pop"], cwd=script_dir, capture_output=True)
+
+            elif "Your branch is up to date" in status:
+                print(f"  {styled('✓', Style.GREEN)} Already up to date!")
+
+            else:
+                print(f"  {styled('Status:', Style.DIM)} {status.strip()}")
+
+        except subprocess.TimeoutExpired:
+            print(f"  {styled('✗ Timeout:', Style.RED)} Could not reach GitHub.")
+        except FileNotFoundError:
+            print(f"  {styled('✗ Git not found:', Style.RED)} Please install git.")
+        except Exception as e:
+            print(f"  {styled('✗ Error:', Style.RED)} {e}")
 
         input(f"\n  {styled('Press Enter to continue...', Style.DIM)}")
 
