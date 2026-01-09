@@ -2211,8 +2211,8 @@ class PerformanceLab:
                 "info": Style.DIM,
             }
             color = priority_colors.get(s["priority"], Style.WHITE)
-
-            print(f"\n  {styled(f'[{s["priority"].upper()}]', color, Style.BOLD)} {s['title']}")
+            priority_text = f"[{s['priority'].upper()}]"
+            print(f"\n  {styled(priority_text, color, Style.BOLD)} {s['title']}")
             print(f"     {styled('Reason:', Style.DIM)} {s['reason']}")
             print(f"     {styled('Impact:', Style.DIM)} {s['impact']}")
             if s.get("quick_action"):
@@ -2242,7 +2242,8 @@ class PerformanceLab:
 
         for issue in issues:
             color = likelihood_colors.get(issue["likelihood"], Style.WHITE)
-            print(f"\n  {styled(f'[{issue["likelihood"].upper()}]', color, Style.BOLD)} {issue['issue']}")
+            likelihood_text = f"[{issue['likelihood'].upper()}]"
+            print(f"\n  {styled(likelihood_text, color, Style.BOLD)} {issue['issue']}")
             print(f"     {styled('Why:', Style.DIM)} {issue['explanation']}")
             print(f"     {styled('Fix:', Style.GREEN)} {issue['fix']}")
 
