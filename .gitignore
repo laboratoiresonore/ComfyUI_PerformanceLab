@@ -9,6 +9,8 @@ __pycache__/
 *.md
 !README.md
 !COMFYUI_MANAGER_SUBMISSION.md
+!TEST_REPORT.md
+!examples/README.md
 
 # Local files
 single_workflow_fix.py
