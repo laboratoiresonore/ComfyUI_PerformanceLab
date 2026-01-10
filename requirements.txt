@@ -1,5 +1,10 @@
-# ComfyUI Performance Lab
-# No external dependencies required - uses Python standard library only
+# ComfyUI Performance Lab v2.1 Requirements
 #
-# Optional dev dependencies (for running tests):
-# pytest>=7.0.0
+# Install with: pip install -r requirements.txt
+#
+# Core dependencies (minimal - most features work without these)
+psutil>=5.9.0          # Process monitoring for WhimWeaver integration
+
+# Optional dependencies for enhanced features
+# litellm>=1.0.0       # Multi-LLM load balancing (uncomment if using)
+# torch>=2.0.0         # GPU monitoring (usually already installed with ComfyUI)

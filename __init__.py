@@ -16,9 +16,9 @@ import socket
 from typing import Dict, Any, List, Tuple, Optional
 
 # Version and metadata
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 __author__ = "Laboratoire Sonore"
-__description__ = "ComfyUI Performance Lab v2.0 - LLM-guided workflow optimization"
+__description__ = "ComfyUI Performance Lab v2.1 - Ultimate AI Workflow Optimization & Testing"
 
 # ComfyUI Manager integration
 WEB_DIRECTORY = None
@@ -497,45 +497,89 @@ Format as JSON: [{"name": "Variation A", "changes": {"cfg": 3.5, "steps": 25}}, 
 
         system_prompt = "\n".join(context_parts)
 
-        # Try to call LLM
+        # Try multiple LLM endpoints in order
+        llm_response = None
+        endpoints_tried = []
+
+        # 1. Try OpenAI-compatible API (LM Studio, Jan, LiteLLM)
         try:
-            # Try Kobold-style API first
+            endpoints_tried.append("OpenAI-compatible (LM Studio/Jan/LiteLLM)")
             payload = {
-                "prompt": f"{system_prompt}\n\nUser: {user_message}\n\nAssistant:",
-                "max_length": 500,
+                "model": "local-model",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
                 "temperature": 0.7,
+                "max_tokens": 500,
             }
 
             req = urllib.request.Request(
-                f"{llm_endpoint.rstrip('/')}/api/v1/generate",
+                f"{llm_endpoint.rstrip('/')}/v1/chat/completions",
                 data=json.dumps(payload).encode('utf-8'),
                 headers={"Content-Type": "application/json"}
             )
 
             with urllib.request.urlopen(req, timeout=60) as response:
                 result = json.loads(response.read().decode('utf-8'))
-                llm_response = result.get("results", [{}])[0].get("text", "")
+                llm_response = result.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-        except urllib.error.URLError:
-            # Try Ollama-style API
+        except (urllib.error.URLError, urllib.error.HTTPError):
+            # 2. Try Kobold-style API
             try:
+                endpoints_tried.append("KoboldCPP")
                 payload = {
-                    "model": "llama3.2",
-                    "prompt": f"{system_prompt}\n\nUser: {user_message}",
-                    "stream": False,
+                    "prompt": f"{system_prompt}\n\nUser: {user_message}\n\nAssistant:",
+                    "max_length": 500,
+                    "temperature": 0.7,
                 }
+
                 req = urllib.request.Request(
-                    f"{llm_endpoint.rstrip('/')}/api/generate",
+                    f"{llm_endpoint.rstrip('/')}/api/v1/generate",
                     data=json.dumps(payload).encode('utf-8'),
                     headers={"Content-Type": "application/json"}
                 )
+
                 with urllib.request.urlopen(req, timeout=60) as response:
                     result = json.loads(response.read().decode('utf-8'))
-                    llm_response = result.get("response", "")
-            except:
-                llm_response = f"Could not connect to LLM at {llm_endpoint}. Please check the endpoint is running."
+                    llm_response = result.get("results", [{}])[0].get("text", "")
+
+            except (urllib.error.URLError, urllib.error.HTTPError):
+                # 3. Try Ollama-style API
+                try:
+                    endpoints_tried.append("Ollama")
+                    payload = {
+                        "model": "llama3.2",
+                        "prompt": f"{system_prompt}\n\nUser: {user_message}",
+                        "stream": False,
+                    }
+                    req = urllib.request.Request(
+                        f"{llm_endpoint.rstrip('/')}/api/generate",
+                        data=json.dumps(payload).encode('utf-8'),
+                        headers={"Content-Type": "application/json"}
+                    )
+                    with urllib.request.urlopen(req, timeout=60) as response:
+                        result = json.loads(response.read().decode('utf-8'))
+                        llm_response = result.get("response", "")
+                except:
+                    pass
         except Exception as e:
-            llm_response = f"Error: {str(e)}"
+            llm_response = None
+
+        # If all attempts failed
+        if not llm_response:
+            llm_response = f"""Could not connect to LLM at {llm_endpoint}.
+
+Tried: {', '.join(endpoints_tried)}
+
+Supported endpoints:
+• LM Studio: http://localhost:1234 (OpenAI-compatible)
+• Jan: http://localhost:1337 (OpenAI-compatible)
+• KoboldCPP: http://localhost:5001
+• Ollama: http://localhost:11434
+• LiteLLM: http://localhost:4000
+
+Please check the endpoint is running."""
 
         # Parse suggestions and variations from response
         suggestions = llm_response
@@ -901,6 +945,444 @@ router_settings:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# NEW v2.1 ADVANCED NODES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class PerfLab_GPUBenchmark:
+    """Show GPU performance hints and compare to other GPUs."""
+
+    DESCRIPTION = """🎯 GPU BENCHMARK HINTS
+
+Shows how fast your GPU is for different models.
+Compares to other GPUs and estimates generation time.
+No external tools needed - built-in database."""
+
+    CATEGORY = "⚡ Performance Lab"
+    FUNCTION = "analyze"
+    RETURN_TYPES = ("STRING", "STRING", "FLOAT", "STRING")
+    RETURN_NAMES = ("benchmark_info", "comparison", "estimated_time_sec", "recommendations")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model_type": (["flux", "sdxl", "sd15", "video"], {"default": "sdxl"}),
+                "steps": ("INT", {"default": 30, "min": 1, "max": 150}),
+            },
+            "optional": {
+                "resolution": ("INT", {"default": 1024, "min": 256, "max": 4096}),
+                "batch_size": ("INT", {"default": 1, "min": 1, "max": 16}),
+            }
+        }
+
+    def analyze(self, model_type, steps, resolution=1024, batch_size=1):
+        try:
+            from gpu_benchmarks import get_gpu_benchmark, estimate_generation_time, compare_gpus
+        except ImportError:
+            return ("GPU benchmark module not available", "", 0.0, "")
+
+        # Detect current GPU
+        gpu_name = "Unknown"
+        try:
+            import torch
+            if torch.cuda.is_available():
+                gpu_name = torch.cuda.get_device_name(0)
+        except:
+            pass
+
+        # Get benchmark
+        benchmark = get_gpu_benchmark(gpu_name)
+
+        # Estimate time
+        estimated_time = estimate_generation_time(gpu_name, model_type, steps, resolution, batch_size)
+
+        # Build benchmark info
+        benchmark_info = f"""═══ GPU Benchmark ═══
+GPU: {gpu_name}
+Tier: {benchmark['tier'].upper()}
+VRAM: {benchmark['vram_gb']}GB
+Recommended Batch: {benchmark['recommended_batch']}
+Max Resolution: {benchmark['max_resolution']}px
+
+Performance ({model_type.upper()}):
+  • Steps/sec: {benchmark.get(f'{model_type}_steps_per_sec', 0):.2f}
+  • Estimated time: {estimated_time:.1f}s"""
+
+        # Compare to other GPUs
+        comparisons = compare_gpus(gpu_name, steps, model_type)
+        comparison_lines = ["\n\n═══ GPU Comparison ═══"]
+
+        for i, comp in enumerate(comparisons[:5], 1):
+            if comp['speedup_percent'] > 0:
+                comparison_lines.append(
+                    f"{i}. {comp['gpu']} ({comp['tier']}) - {comp['speedup_percent']:+.0f}% faster ({comp['time']:.1f}s)"
+                )
+            else:
+                comparison_lines.append(
+                    f"{i}. {comp['gpu']} ({comp['tier']}) - {comp['speedup_percent']:.0f}% slower ({comp['time']:.1f}s)"
+                )
+
+        comparison = "\n".join(comparison_lines)
+
+        # Recommendations
+        recommendations = []
+        if benchmark['tier'] == 'unknown':
+            recommendations.append("⚠️ GPU not in benchmark database - using conservative estimates")
+        if batch_size > benchmark['recommended_batch']:
+            recommendations.append(f"⚠️ Batch size {batch_size} may exceed optimal ({benchmark['recommended_batch']})")
+        if resolution > benchmark['max_resolution']:
+            recommendations.append(f"⚠️ Resolution {resolution} may cause OOM (recommended max: {benchmark['max_resolution']})")
+
+        recommendations_text = "\n".join(recommendations) if recommendations else "✅ Settings look optimal for your GPU"
+
+        print(f"[Performance Lab GPU Benchmark]\n{benchmark_info}{comparison}")
+
+        return (benchmark_info, comparison, estimated_time, recommendations_text)
+
+
+class PerfLab_BatchProcessor:
+    """Process multiple workflow variations from CSV file."""
+
+    DESCRIPTION = """📊 BATCH PROCESSOR
+
+Load parameters from CSV and queue multiple generations.
+Perfect for:
+• Testing prompt variations
+• A/B testing configurations
+• Model comparisons
+• Dataset generation"""
+
+    CATEGORY = "⚡ Performance Lab"
+    FUNCTION = "process"
+    RETURN_TYPES = ("STRING", "INT", "STRING", "STRING")
+    RETURN_NAMES = ("status", "total_configs", "current_config_json", "next_config_json")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "csv_path": ("STRING", {"default": "batch_config.csv"}),
+                "action": (["load", "get_next", "get_status", "create_template"], {"default": "load"}),
+            },
+            "optional": {
+                "template_type": (["image", "video", "llm"], {"default": "image"}),
+            }
+        }
+
+    def process(self, csv_path, action, template_type="image"):
+        try:
+            from batch_processor import parse_batch_csv, BatchQueue, generate_batch_csv_template
+        except ImportError:
+            return ("Batch processor module not available", 0, "{}", "{}")
+
+        if action == "create_template":
+            try:
+                generate_batch_csv_template(csv_path, template_type)
+                return (f"✅ Template created: {csv_path}", 0, "{}", "{}")
+            except Exception as e:
+                return (f"❌ Error creating template: {e}", 0, "{}", "{}")
+
+        if action == "load":
+            try:
+                configs = parse_batch_csv(csv_path)
+                # Store in global queue (simplified - in production use persistent storage)
+                global _BATCH_QUEUE
+                _BATCH_QUEUE = BatchQueue()
+                _BATCH_QUEUE.add_many(configs)
+
+                status = f"✅ Loaded {len(configs)} configurations from {csv_path}"
+                first_config = json.dumps(configs[0], indent=2) if configs else "{}"
+                second_config = json.dumps(configs[1], indent=2) if len(configs) > 1 else "{}"
+
+                return (status, len(configs), first_config, second_config)
+            except Exception as e:
+                return (f"❌ Error loading CSV: {e}", 0, "{}", "{}")
+
+        if action == "get_next":
+            if '_BATCH_QUEUE' not in globals():
+                return ("❌ No batch loaded - use 'load' first", 0, "{}", "{}")
+
+            next_item = _BATCH_QUEUE.get_next()
+            if next_item:
+                status_info = _BATCH_QUEUE.get_status()
+                status = f"⏳ Progress: {status_info['completed']}/{status_info['total']} complete"
+                return (status, status_info['total'], json.dumps(next_item, indent=2), "{}")
+            else:
+                return ("✅ All batch items processed!", 0, "{}", "{}")
+
+        if action == "get_status":
+            if '_BATCH_QUEUE' not in globals():
+                return ("❌ No batch loaded", 0, "{}", "{}")
+
+            status_info = _BATCH_QUEUE.get_status()
+            status = f"""═══ Batch Status ═══
+Queued: {status_info['queued']}
+Completed: {status_info['completed']}
+Failed: {status_info['failed']}
+Total: {status_info['total']}"""
+            return (status, status_info['total'], "{}", "{}")
+
+        return ("Unknown action", 0, "{}", "{}")
+
+
+class PerfLab_WhimWeaverLauncher:
+    """Launch and control WhimWeaver workflows."""
+
+    DESCRIPTION = """🚀 WHIMWEAVER LAUNCHER
+
+Launch WhimWeaver with specific workflows.
+Monitor performance in real-time.
+Perfect for automated testing and optimization."""
+
+    CATEGORY = "⚡ Performance Lab"
+    FUNCTION = "launch"
+    RETURN_TYPES = ("STRING", "BOOLEAN", "INT")
+    RETURN_NAMES = ("status", "is_running", "process_id")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "action": (["launch", "stop", "status"], {"default": "status"}),
+            },
+            "optional": {
+                "whimweaver_path": ("STRING", {"default": ""}),
+                "workflow_path": ("STRING", {"default": ""}),
+                "extra_args": ("STRING", {"default": ""}),
+            }
+        }
+
+    def launch(self, action, whimweaver_path="", workflow_path="", extra_args=""):
+        try:
+            from whimweaver_integration import WhimWeaverLauncher
+        except ImportError:
+            return ("WhimWeaver integration module not available", False, 0)
+
+        global _WHIMWEAVER_LAUNCHER
+
+        if '_WHIMWEAVER_LAUNCHER' not in globals():
+            _WHIMWEAVER_LAUNCHER = WhimWeaverLauncher(whimweaver_path if whimweaver_path else None)
+
+        launcher = _WHIMWEAVER_LAUNCHER
+
+        if action == "launch":
+            args = extra_args.split() if extra_args else None
+            success = launcher.launch(workflow_path if workflow_path else None, args)
+
+            if success:
+                pid = launcher.process.pid if launcher.process else 0
+                return (f"✅ WhimWeaver launched (PID: {pid})", True, pid)
+            else:
+                return ("❌ Failed to launch WhimWeaver", False, 0)
+
+        elif action == "stop":
+            launcher.stop()
+            return ("✅ WhimWeaver stopped", False, 0)
+
+        elif action == "status":
+            if launcher.is_running():
+                metrics = launcher.get_metrics()
+                status = f"""═══ WhimWeaver Status ═══
+Status: Running
+Runtime: {metrics.get('runtime_sec', 0):.1f}s
+CPU: {metrics.get('cpu_percent', 0):.1f}%
+Memory: {metrics.get('memory_mb', 0):.0f}MB
+GPU Memory: {metrics.get('gpu_memory_mb', 0):.0f}MB"""
+                pid = launcher.process.pid if launcher.process else 0
+                return (status, True, pid)
+            else:
+                return ("WhimWeaver not running", False, 0)
+
+        return ("Unknown action", False, 0)
+
+
+class PerfLab_WhimWeaverMonitor:
+    """Monitor WhimWeaver performance in real-time."""
+
+    DESCRIPTION = """📊 WHIMWEAVER MONITOR
+
+Real-time performance monitoring for WhimWeaver.
+Tracks CPU, memory, GPU usage.
+Get performance summary after completion."""
+
+    CATEGORY = "⚡ Performance Lab"
+    FUNCTION = "monitor"
+    RETURN_TYPES = ("STRING", "FLOAT", "FLOAT", "FLOAT", "STRING")
+    RETURN_NAMES = ("current_metrics", "cpu_percent", "memory_mb", "gpu_memory_mb", "summary")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "mode": (["current", "summary", "attach_pid"], {"default": "current"}),
+            },
+            "optional": {
+                "pid": ("INT", {"default": 0}),
+            }
+        }
+
+    def monitor(self, mode, pid=0):
+        try:
+            from whimweaver_integration import WhimWeaverMonitor
+        except ImportError:
+            return ("Monitor module not available", 0.0, 0.0, 0.0, "")
+
+        global _WHIMWEAVER_MONITOR
+
+        if '_WHIMWEAVER_MONITOR' not in globals():
+            _WHIMWEAVER_MONITOR = WhimWeaverMonitor()
+
+        monitor = _WHIMWEAVER_MONITOR
+
+        if mode == "attach_pid" and pid > 0:
+            if monitor.attach(pid):
+                return (f"✅ Attached to PID {pid}", 0.0, 0.0, 0.0, "")
+            else:
+                return (f"❌ Failed to attach to PID {pid}", 0.0, 0.0, 0.0, "")
+
+        elif mode == "current":
+            metrics = monitor.get_metrics()
+
+            if "error" in metrics:
+                return (metrics["error"], 0.0, 0.0, 0.0, "")
+
+            metrics_text = f"""═══ Current Metrics ═══
+Runtime: {metrics.get('runtime_sec', 0):.1f}s
+CPU: {metrics.get('cpu_percent', 0):.1f}%
+Memory: {metrics.get('memory_mb', 0):.0f}MB
+Threads: {metrics.get('num_threads', 0)}
+GPU Memory: {metrics.get('gpu_memory_mb', 0):.0f}MB
+Status: {metrics.get('status', 'unknown')}"""
+
+            return (
+                metrics_text,
+                metrics.get('cpu_percent', 0.0),
+                metrics.get('memory_mb', 0.0),
+                metrics.get('gpu_memory_mb', 0.0),
+                ""
+            )
+
+        elif mode == "summary":
+            summary = monitor.get_summary()
+
+            if "error" in summary:
+                return (summary["error"], 0.0, 0.0, 0.0, "")
+
+            summary_text = f"""═══ Performance Summary ═══
+Total Runtime: {summary.get('total_runtime_sec', 0):.1f}s
+Avg CPU: {summary.get('avg_cpu_percent', 0):.1f}%
+Avg Memory: {summary.get('avg_memory_mb', 0):.0f}MB
+Peak Memory: {summary.get('peak_memory_mb', 0):.0f}MB
+Samples: {summary.get('samples_collected', 0)}"""
+
+            return ("", 0.0, 0.0, 0.0, summary_text)
+
+        return ("Unknown mode", 0.0, 0.0, 0.0, "")
+
+
+class PerfLab_MultiModalTester:
+    """Test any AI model type (image, video, LLM) with performance tracking."""
+
+    DESCRIPTION = """🎭 MULTI-MODAL TESTER
+
+Universal testing node for:
+• Image generation (SD, SDXL, Flux)
+• Video generation (AnimateDiff, SVD)
+• LLM inference (any text model)
+• Audio generation
+
+Automatically detects model type and tracks appropriate metrics."""
+
+    CATEGORY = "⚡ Performance Lab"
+    FUNCTION = "test"
+    RETURN_TYPES = ("STRING", "FLOAT", "FLOAT", "STRING", "STRING")
+    RETURN_NAMES = ("test_report", "duration_sec", "throughput", "model_type", "recommendations")
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model_type": (["auto", "image", "video", "llm", "audio"], {"default": "auto"}),
+            },
+            "optional": {
+                "workflow_path": ("STRING", {"default": ""}),
+                "trigger": ("*", {"tooltip": "Connect to trigger test"}),
+                "timer": ("PERF_TIMER", {"tooltip": "Connect from Timer"}),
+            }
+        }
+
+    def test(self, model_type, workflow_path="", trigger=None, timer=None):
+        # Detect model type
+        detected_type = model_type
+        if model_type == "auto" and workflow_path:
+            try:
+                from whimweaver_integration import detect_whimweaver_type
+                detected_type = detect_whimweaver_type(workflow_path)
+            except:
+                detected_type = "unknown"
+
+        # Calculate duration
+        duration = 0.0
+        if timer and "start_time" in timer:
+            duration = time.time() - timer["start_time"]
+
+        # Get GPU metrics
+        try:
+            import torch
+            if torch.cuda.is_available():
+                vram_used = torch.cuda.memory_allocated() / (1024**3)
+                vram_peak = torch.cuda.max_memory_allocated() / (1024**3)
+        except:
+            vram_used = 0.0
+            vram_peak = 0.0
+
+        # Calculate throughput based on type
+        throughput = 0.0
+        throughput_label = ""
+
+        if detected_type == "image":
+            # Images per second
+            throughput = 1.0 / duration if duration > 0 else 0
+            throughput_label = "images/sec"
+        elif detected_type == "video":
+            # Assume 60 frames, calculate frames per second
+            throughput = 60.0 / duration if duration > 0 else 0
+            throughput_label = "frames/sec"
+        elif detected_type == "llm":
+            # Tokens per second (estimate)
+            throughput = 500.0 / duration if duration > 0 else 0  # Assume 500 tokens
+            throughput_label = "tokens/sec"
+
+        # Build report
+        test_report = f"""═══ Multi-Modal Test Results ═══
+Model Type: {detected_type.upper()}
+Duration: {duration:.2f}s
+Throughput: {throughput:.2f} {throughput_label}
+VRAM Used: {vram_used:.2f}GB
+VRAM Peak: {vram_peak:.2f}GB"""
+
+        # Recommendations
+        recommendations = []
+        if duration > 60:
+            recommendations.append("⚠️ Long generation time - consider optimization")
+        if vram_peak > 20:
+            recommendations.append("⚠️ High VRAM usage - may limit batch size")
+        if throughput < 1.0 and detected_type == "image":
+            recommendations.append("💡 Low throughput - check AutoFix suggestions")
+
+        recommendations_text = "\n".join(recommendations) if recommendations else "✅ Performance looks good!"
+
+        print(f"[Performance Lab Multi-Modal Test]\n{test_report}\n{recommendations_text}")
+
+        return (test_report, duration, throughput, detected_type, recommendations_text)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # NODE REGISTRATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -919,6 +1401,13 @@ NODE_CLASS_MAPPINGS = {
     "PerfLab_ABTest": PerfLab_ABTest,
     "PerfLab_Feedback": PerfLab_Feedback,
     "PerfLab_NetworkSetup": PerfLab_NetworkSetup,
+
+    # v2.1 Advanced (6 nodes)
+    "PerfLab_GPUBenchmark": PerfLab_GPUBenchmark,
+    "PerfLab_BatchProcessor": PerfLab_BatchProcessor,
+    "PerfLab_WhimWeaverLauncher": PerfLab_WhimWeaverLauncher,
+    "PerfLab_WhimWeaverMonitor": PerfLab_WhimWeaverMonitor,
+    "PerfLab_MultiModalTester": PerfLab_MultiModalTester,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -936,7 +1425,14 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PerfLab_ABTest": "🔬 A/B Test",
     "PerfLab_Feedback": "👍 Record Preference",
     "PerfLab_NetworkSetup": "🌐 Network Setup",
+
+    # v2.1 Advanced
+    "PerfLab_GPUBenchmark": "🎯 GPU Benchmark Hints",
+    "PerfLab_BatchProcessor": "📊 Batch Processor (CSV)",
+    "PerfLab_WhimWeaverLauncher": "🚀 WhimWeaver Launcher",
+    "PerfLab_WhimWeaverMonitor": "📊 WhimWeaver Monitor",
+    "PerfLab_MultiModalTester": "🎭 Multi-Modal Tester",
 }
 
 # Print startup message
-print(f"[Performance Lab] v{__version__} loaded - {len(NODE_CLASS_MAPPINGS)} nodes (focused v2.0)")
+print(f"[Performance Lab] v{__version__} loaded - {len(NODE_CLASS_MAPPINGS)} nodes (v2.1 Ultimate Edition)")
